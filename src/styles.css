@@ -88,3 +88,29 @@
 
 .bg-festive { background-image: var(--gradient-festive); }
 .shadow-festive { box-shadow: var(--shadow-festive); }
+
+/* PDF-safe color overrides: html2canvas does not support oklch */
+.pdf-mode, .pdf-mode * {
+  --background: #ffffff;
+  --foreground: #1a120b;
+  --card: #ffffff;
+  --card-foreground: #1a120b;
+  --popover: #ffffff;
+  --popover-foreground: #1a120b;
+  --primary: #c0421b;
+  --primary-foreground: #ffffff;
+  --secondary: #f5ede1;
+  --secondary-foreground: #1a120b;
+  --muted: #f5ede1;
+  --muted-foreground: #6b5d4f;
+  --accent: #fde8d0;
+  --accent-foreground: #1a120b;
+  --destructive: #c0421b;
+  --destructive-foreground: #ffffff;
+  --border: #e5d9cc;
+  --input: #e5d9cc;
+  --ring: #c0421b;
+  --ember: #c0421b;
+  --spark: #e8a14a;
+}
+.pdf-mode .bg-festive { background-image: linear-gradient(135deg, #c0421b, #e8a14a) !important; }
