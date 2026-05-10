@@ -35,17 +35,6 @@ const blankRow = (): Row => ({
 
 function BillingPage() {
   const { authed, selectedCompany, products, config } = useBilling();
-  if (!authed) return <Navigate to="/" />;
-  if (!selectedCompany) return <Navigate to="/dashboard" />;
-
-  const companyName =
-    selectedCompany === "Jayakavi" ? "Jayakavi Fire Works" : "Sri Thangakaviya Fireworks";
-
-  const filteredProducts = useMemo(
-    () => products.filter((p) => p.company === selectedCompany || p.company === "Both"),
-    [products, selectedCompany],
-  );
-
   const today = new Date().toISOString().slice(0, 10);
   const [header, setHeader] = useState({
     invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
@@ -67,6 +56,20 @@ function BillingPage() {
   const [sgst, setSgst] = useState(config.sgstRate);
   const [igst, setIgst] = useState(config.igstRate);
 
+  const invoiceRef = useRef<HTMLDivElement>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const filteredProducts = useMemo(
+    () => products.filter((p) => p.company === selectedCompany || p.company === "Both"),
+    [products, selectedCompany],
+  );
+
+  if (!authed) return <Navigate to="/" />;
+  if (!selectedCompany) return <Navigate to="/dashboard" />;
+
+  const companyName =
+    selectedCompany === "Jayakavi" ? "Jayakavi Fire Works" : "Sri Thangakaviya Fireworks";
+
   const updateRow = (id: string, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const addRow = () => setRows((rs) => [...rs, blankRow()]);
@@ -81,15 +84,15 @@ function BillingPage() {
   const igstAmt = taxType === "Inter-state" ? (taxable * igst) / 100 : 0;
   const grandTotal = taxable + cgstAmt + sgstAmt + igstAmt;
 
-  const invoiceRef = useRef<HTMLDivElement>(null);
-  const [generating, setGenerating] = useState(false);
-
   const generatePDF = async () => {
     if (!invoiceRef.current) return;
     setGenerating(true);
     invoiceRef.current.classList.add("pdf-mode");
     try {
-      const canvas = await html2canvas(invoiceRef.current, { scale: 2, backgroundColor: "#ffffff" });
+      const canvas = await html2canvas(invoiceRef.current, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+      });
       const img = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pageW = pdf.internal.pageSize.getWidth();
@@ -116,7 +119,8 @@ function BillingPage() {
     }
   };
 
-  const fmt = (n: number) => n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = (n: number) =>
+    n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="min-h-screen">
@@ -291,13 +295,15 @@ function BillingPage() {
           <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
             <div className="space-y-3">
               <p className="text-xs uppercase font-semibold text-muted-foreground">Adjustments</p>
-              {([
-                ["Discount (%)", discount, setDiscount],
-                ["Handling", handling, setHandling],
-                ["Mahamai", mahamai, setMahamai],
-                ["Insurance", insurance, setInsurance],
-                ["Freight", freight, setFreight],
-              ] as const).map(([label, val, setter]) => (
+              {(
+                [
+                  ["Discount (%)", discount, setDiscount],
+                  ["Handling", handling, setHandling],
+                  ["Mahamai", mahamai, setMahamai],
+                  ["Insurance", insurance, setInsurance],
+                  ["Freight", freight, setFreight],
+                ] as const
+              ).map(([label, val, setter]) => (
                 <div key={label} className="flex items-center justify-between gap-3">
                   <label className="text-sm">{label}</label>
                   <input
@@ -314,7 +320,7 @@ function BillingPage() {
                 <label className="text-sm font-medium">Tax Type</label>
                 <select
                   value={taxType}
-                  onChange={(e) => setTaxType(e.target.value as any)}
+                  onChange={(e) => setTaxType(e.target.value as "Inter-state" | "Intra-state")}
                   className="w-full mt-1 border rounded px-2 py-2 bg-background"
                 >
                   <option value="Intra-state">Intra-state</option>

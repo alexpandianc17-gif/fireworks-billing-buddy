@@ -61,10 +61,7 @@ export const useBilling = create<BillingState>((set, get) => ({
     );
     if (exists) return { ok: false, error: "Duplicate product for this company." };
     set({
-      products: [
-        ...get().products,
-        { ...p, id: Date.now().toString(), hsn: "3604" },
-      ],
+      products: [...get().products, { ...p, id: Date.now().toString(), hsn: "3604" }],
     });
     return { ok: true };
   },

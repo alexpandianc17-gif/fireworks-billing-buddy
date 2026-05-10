@@ -42,7 +42,9 @@ function Dashboard() {
             <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-festive opacity-20 group-hover:opacity-40 transition" />
             <Flame className="w-10 h-10 text-ember mb-6" />
             <h2 className="text-2xl font-bold">Sri Thangakaviya Fireworks</h2>
-            <p className="text-muted-foreground mt-2">Generate invoice for Thangakaviya catalogue</p>
+            <p className="text-muted-foreground mt-2">
+              Generate invoice for Thangakaviya catalogue
+            </p>
           </button>
         </div>
       </main>

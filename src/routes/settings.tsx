@@ -10,10 +10,16 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const { authed, config, saveConfig, products, addProduct, deleteProduct, loading } = useBilling();
-  if (!authed) return <Navigate to="/" />;
-
   const [form, setForm] = useState(config);
   const [saved, setSaved] = useState(false);
+  const [np, setNp] = useState<{ company: Company; name: string; unit: string }>({
+    company: "Both",
+    name: "",
+    unit: "nos",
+  });
+  const [pErr, setPErr] = useState("");
+
+  if (!authed) return <Navigate to="/" />;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,13 +27,6 @@ function SettingsPage() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
-
-  const [np, setNp] = useState<{ company: Company; name: string; unit: string }>({
-    company: "Both",
-    name: "",
-    unit: "nos",
-  });
-  const [pErr, setPErr] = useState("");
 
   const addP = (e: React.FormEvent) => {
     e.preventDefault();
