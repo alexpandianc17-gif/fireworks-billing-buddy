@@ -111,6 +111,7 @@ function BillingPage() {
       }
       pdf.save(`${header.invoiceNo}.pdf`);
     } finally {
+      invoiceRef.current?.classList.remove("pdf-mode");
       setGenerating(false);
     }
   };
