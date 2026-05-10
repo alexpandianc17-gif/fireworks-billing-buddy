@@ -87,6 +87,7 @@ function BillingPage() {
   const generatePDF = async () => {
     if (!invoiceRef.current) return;
     setGenerating(true);
+    invoiceRef.current.classList.add("pdf-mode");
     try {
       const canvas = await html2canvas(invoiceRef.current, { scale: 2, backgroundColor: "#ffffff" });
       const img = canvas.toDataURL("image/png");
