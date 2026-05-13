@@ -1,72 +1,68 @@
 import { create } from "zustand";
+// Import your new Server Function!
+import { fetchGoogleSheetData } from "@/server/googleSheets";
 
 export type Company = "Jayakavi" | "Thangakaviya" | "Both";
 
 export interface Product {
-  id: string;
-  company: Company;
+  company: string;
   name: string;
   hsn: string;
   unit: string;
 }
 
-export interface Config {
-  pin: string;
-  cgstRate: number;
-  sgstRate: number;
-  igstRate: number;
-  defaultDiscount: number;
-}
-
 interface BillingState {
   authed: boolean;
+  isLoading: boolean;
   selectedCompany: "Jayakavi" | "Thangakaviya" | null;
-  config: Config;
+  config: {
+    PIN: string;
+    CGST_Rate: number;
+    SGST_Rate: number;
+    IGST_Rate: number;
+    Default_Discount: number;
+  };
   products: Product[];
-  loading: boolean;
-  setAuthed: (v: boolean) => void;
+  setAuthed: (val: boolean) => void;
   setCompany: (c: "Jayakavi" | "Thangakaviya") => void;
-  saveConfig: (c: Config) => Promise<void>;
-  addProduct: (p: Omit<Product, "id" | "hsn">) => { ok: boolean; error?: string };
+  fetchData: () => Promise<void>;
+  saveConfig: (c: any) => Promise<void>;
+  addProduct: (p: any) => { ok: boolean; error?: string };
   deleteProduct: (id: string) => void;
 }
 
-const initialProducts: Product[] = [
-  { id: "1", company: "Both", name: "Sparklers 10cm", hsn: "3604", unit: "nos" },
-  { id: "2", company: "Both", name: "Sparklers 15cm", hsn: "3604", unit: "nos" },
-  { id: "3", company: "Jayakavi", name: "Flower Pots Small", hsn: "3604", unit: "nos" },
-  { id: "4", company: "Jayakavi", name: "Lakshmi Crackers 10's", hsn: "3604", unit: "nos" },
-  { id: "5", company: "Thangakaviya", name: "Atom Bomb", hsn: "3604", unit: "nos" },
-  { id: "6", company: "Thangakaviya", name: "Rocket Bomb", hsn: "3604", unit: "nos" },
-  { id: "7", company: "Both", name: "Ground Chakkar", hsn: "3604", unit: "nos" },
-  { id: "8", company: "Jayakavi", name: "Twinkling Star", hsn: "3604", unit: "nos" },
-];
-
-export const useBilling = create<BillingState>((set, get) => ({
+export const useBilling = create<BillingState>((set) => ({
   authed: false,
+  isLoading: true,
   selectedCompany: null,
-  config: { pin: "123456", cgstRate: 9, sgstRate: 9, igstRate: 18, defaultDiscount: 0 },
-  products: initialProducts,
-  loading: false,
-  setAuthed: (v) => set({ authed: v }),
+  config: {
+    PIN: "123456",
+    CGST_Rate: 9,
+    SGST_Rate: 9,
+    IGST_Rate: 18,
+    Default_Discount: 0,
+  },
+  products: [],
+  setAuthed: (val) => set({ authed: val }),
   setCompany: (c) => set({ selectedCompany: c }),
-  saveConfig: async (c) => {
-    set({ loading: true });
-    await new Promise((r) => setTimeout(r, 400));
-    set({ config: c, loading: false });
+
+  fetchData: async () => {
+    try {
+      // Call the TanStack server function directly! No fetch() needed.
+      const data = await fetchGoogleSheetData();
+
+      set((state) => ({
+        config: { ...state.config, ...data.settings },
+        products: data.products || [],
+        isLoading: false
+      }));
+    } catch (error) {
+      console.error("Error fetching from Server Function:", error);
+      set({ isLoading: false });
+    }
   },
-  addProduct: (p) => {
-    const exists = get().products.some(
-      (x) => x.name.trim().toLowerCase() === p.name.trim().toLowerCase() && x.company === p.company,
-    );
-    if (exists) return { ok: false, error: "Duplicate product for this company." };
-    set({
-      products: [
-        ...get().products,
-        { ...p, id: Date.now().toString(), hsn: "3604" },
-      ],
-    });
-    return { ok: true };
-  },
-  deleteProduct: (id) => set({ products: get().products.filter((p) => p.id !== id) }),
+
+  saveConfig: async () => { },
+  addProduct: () => ({ ok: true }),
+  deleteProduct: () => { },
 }));

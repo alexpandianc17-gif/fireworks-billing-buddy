@@ -1,8 +1,8 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { Plus, Trash2, Download } from "lucide-react";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { toPng } from "html-to-image";
 import { useBilling } from "@/store/billing";
 import { TopNav } from "@/components/TopNav";
 import { ProductCombobox } from "@/components/ProductCombobox";
@@ -13,33 +13,34 @@ export const Route = createFileRoute("/billing")({
 
 interface Row {
   id: string;
-  cases: number;
+  cases: number | string;
   productId: string;
   name: string;
   hsn: string;
-  qty: number;
+  qty: number | string;
   unit: string;
-  rate: number;
+  rate: number | string;
 }
 
 const blankRow = (): Row => ({
   id: Math.random().toString(36).slice(2),
-  cases: 0,
+  cases: "",
   productId: "",
   name: "",
   hsn: "3604",
-  qty: 0,
+  qty: "",
   unit: "nos",
-  rate: 0,
+  rate: "",
 });
 
 function BillingPage() {
-  const { authed, selectedCompany, products, config } = useBilling();
-  if (!authed) return <Navigate to="/" />;
-  if (!selectedCompany) return <Navigate to="/dashboard" />;
+  const { authed, selectedCompany, products, config, fetchData } = useBilling();
 
-  const companyName =
-    selectedCompany === "Jayakavi" ? "Jayakavi Fire Works" : "Sri Thangakaviya Fireworks";
+  useEffect(() => {
+    if (products.length === 0) {
+      fetchData();
+    }
+  }, [products.length, fetchData]);
 
   const filteredProducts = useMemo(
     () => products.filter((p) => p.company === selectedCompany || p.company === "Both"),
@@ -57,22 +58,49 @@ function BillingPage() {
   });
 
   const [rows, setRows] = useState<Row[]>([blankRow()]);
-  const [discount, setDiscount] = useState<number>(config.defaultDiscount);
+  const [discount, setDiscount] = useState<number>(config.Default_Discount);
   const [handling, setHandling] = useState(0);
   const [mahamai, setMahamai] = useState(0);
   const [insurance, setInsurance] = useState(0);
   const [freight, setFreight] = useState(0);
   const [taxType, setTaxType] = useState<"Inter-state" | "Intra-state">("Intra-state");
-  const [cgst, setCgst] = useState(config.cgstRate);
-  const [sgst, setSgst] = useState(config.sgstRate);
-  const [igst, setIgst] = useState(config.igstRate);
+  const [cgst, setCgst] = useState(config.CGST_Rate);
+  const [sgst, setSgst] = useState(config.SGST_Rate);
+  const [igst, setIgst] = useState(config.IGST_Rate);
+
+  const invoiceRef = useRef<HTMLDivElement>(null);
+  const [generating, setGenerating] = useState(false);
+
+  if (!authed) return <Navigate to="/" />;
+  if (!selectedCompany) return <Navigate to="/dashboard" />;
+
+  const companyName =
+    selectedCompany === "Jayakavi" ? "Jayakavi Fire Works" : "Sri Thangakaviya Fireworks";
 
   const updateRow = (id: string, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const addRow = () => setRows((rs) => [...rs, blankRow()]);
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
-  const lineTotals = rows.map((r) => r.qty * r.rate);
+  const handleKeyDown = (e: React.KeyboardEvent, index: number, field: string) => {
+    if (e.key === "Enter" && field === "rate") {
+      e.preventDefault();
+      if (index === rows.length - 1) addRow();
+      else {
+        setTimeout(() => document.getElementById(`row-${index + 1}-cases`)?.focus(), 0);
+      }
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      document.getElementById(`row-${index + 1}-${field}`)?.focus();
+    }
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      document.getElementById(`row-${index - 1}-${field}`)?.focus();
+    }
+  };
+
+  const lineTotals = rows.map((r) => (Number(r.qty) || 0) * (Number(r.rate) || 0));
   const subtotal = lineTotals.reduce((a, b) => a + b, 0);
   const discountAmt = (subtotal * discount) / 100;
   const taxable = subtotal - discountAmt + handling + mahamai + insurance + freight;
@@ -81,29 +109,30 @@ function BillingPage() {
   const igstAmt = taxType === "Inter-state" ? (taxable * igst) / 100 : 0;
   const grandTotal = taxable + cgstAmt + sgstAmt + igstAmt;
 
-  const invoiceRef = useRef<HTMLDivElement>(null);
-  const [generating, setGenerating] = useState(false);
-
   const generatePDF = async () => {
     if (!invoiceRef.current) return;
     setGenerating(true);
     invoiceRef.current.classList.add("pdf-mode");
     try {
-      const canvas = await html2canvas(invoiceRef.current, { scale: 2, backgroundColor: "#ffffff" });
-      const img = canvas.toDataURL("image/png");
+      const dataUrl = await toPng(invoiceRef.current, {
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+      });
       const pdf = new jsPDF("p", "mm", "a4");
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const ratio = canvas.height / canvas.width;
+      
+      const imgProps = pdf.getImageProperties(dataUrl);
+      const ratio = imgProps.height / imgProps.width;
       const imgW = pageW;
       const imgH = imgW * ratio;
       let h = imgH;
       let pos = 0;
       if (h <= pageH) {
-        pdf.addImage(img, "PNG", 0, 0, imgW, imgH);
+        pdf.addImage(dataUrl, "PNG", 0, 0, imgW, imgH);
       } else {
         while (h > 0) {
-          pdf.addImage(img, "PNG", 0, pos, imgW, imgH);
+          pdf.addImage(dataUrl, "PNG", 0, pos, imgW, imgH);
           h -= pageH;
           pos -= pageH;
           if (h > 0) pdf.addPage();
@@ -116,7 +145,8 @@ function BillingPage() {
     }
   };
 
-  const fmt = (n: number) => n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = (n: number) =>
+    n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <div className="min-h-screen">
@@ -222,10 +252,12 @@ function BillingPage() {
                     <td className="px-2 py-2">{i + 1}</td>
                     <td className="px-2 py-2 w-20">
                       <input
+                        id={`row-${i}-cases`}
                         type="number"
                         min={0}
                         value={r.cases}
-                        onChange={(e) => updateRow(r.id, { cases: +e.target.value })}
+                        onChange={(e) => updateRow(r.id, { cases: e.target.value === "" ? "" : Number(e.target.value) })}
+                        onKeyDown={(e) => handleKeyDown(e, i, "cases")}
                         className="w-full border rounded px-2 py-1 bg-background"
                       />
                     </td>
@@ -233,38 +265,43 @@ function BillingPage() {
                       <ProductCombobox
                         products={filteredProducts}
                         value={r.name}
-                        onSelect={(p) =>
+                        onSelect={(p) => {
                           updateRow(r.id, {
-                            productId: p.id,
+                            productId: p.name,
                             name: p.name,
                             hsn: p.hsn,
                             unit: p.unit,
-                          })
-                        }
+                          });
+                          setTimeout(() => document.getElementById(`row-${i}-qty`)?.focus(), 0);
+                        }}
                       />
                     </td>
                     <td className="px-2 py-2 text-muted-foreground">{r.hsn}</td>
                     <td className="px-2 py-2 w-20">
                       <input
+                        id={`row-${i}-qty`}
                         type="number"
                         min={0}
                         value={r.qty}
-                        onChange={(e) => updateRow(r.id, { qty: +e.target.value })}
+                        onChange={(e) => updateRow(r.id, { qty: e.target.value === "" ? "" : Number(e.target.value) })}
+                        onKeyDown={(e) => handleKeyDown(e, i, "qty")}
                         className="w-full border rounded px-2 py-1 bg-background text-right"
                       />
                     </td>
                     <td className="px-2 py-2 text-muted-foreground">{r.unit}</td>
                     <td className="px-2 py-2 w-24">
                       <input
+                        id={`row-${i}-rate`}
                         type="number"
                         min={0}
                         step="0.01"
                         value={r.rate}
-                        onChange={(e) => updateRow(r.id, { rate: +e.target.value })}
+                        onChange={(e) => updateRow(r.id, { rate: e.target.value === "" ? "" : Number(e.target.value) })}
+                        onKeyDown={(e) => handleKeyDown(e, i, "rate")}
                         className="w-full border rounded px-2 py-1 bg-background text-right"
                       />
                     </td>
-                    <td className="px-2 py-2 text-right font-medium">{fmt(r.qty * r.rate)}</td>
+                    <td className="px-2 py-2 text-right font-medium">{fmt((Number(r.qty) || 0) * (Number(r.rate) || 0))}</td>
                     <td className="px-2 py-2">
                       {rows.length > 1 && (
                         <button
@@ -291,13 +328,15 @@ function BillingPage() {
           <div className="grid md:grid-cols-2 gap-6 pt-4 border-t">
             <div className="space-y-3">
               <p className="text-xs uppercase font-semibold text-muted-foreground">Adjustments</p>
-              {([
-                ["Discount (%)", discount, setDiscount],
-                ["Handling", handling, setHandling],
-                ["Mahamai", mahamai, setMahamai],
-                ["Insurance", insurance, setInsurance],
-                ["Freight", freight, setFreight],
-              ] as const).map(([label, val, setter]) => (
+              {(
+                [
+                  ["Discount (%)", discount, setDiscount],
+                  ["Handling", handling, setHandling],
+                  ["Mahamai", mahamai, setMahamai],
+                  ["Insurance", insurance, setInsurance],
+                  ["Freight", freight, setFreight],
+                ] as const
+              ).map(([label, val, setter]) => (
                 <div key={label} className="flex items-center justify-between gap-3">
                   <label className="text-sm">{label}</label>
                   <input
@@ -314,7 +353,7 @@ function BillingPage() {
                 <label className="text-sm font-medium">Tax Type</label>
                 <select
                   value={taxType}
-                  onChange={(e) => setTaxType(e.target.value as any)}
+                  onChange={(e) => setTaxType(e.target.value as "Inter-state" | "Intra-state")}
                   className="w-full mt-1 border rounded px-2 py-2 bg-background"
                 >
                   <option value="Intra-state">Intra-state</option>

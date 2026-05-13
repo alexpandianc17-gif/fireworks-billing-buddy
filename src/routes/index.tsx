@@ -1,6 +1,6 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Sparkles, Lock } from "lucide-react";
+import { useState, useEffect } from "react"; // Added useEffect
+import { Sparkles, Lock, Loader2 } from "lucide-react"; // Added Loader2
 import { useBilling } from "@/store/billing";
 
 export const Route = createFileRoute("/")({
@@ -8,16 +8,23 @@ export const Route = createFileRoute("/")({
 });
 
 function PinPage() {
-  const { authed, config, setAuthed } = useBilling();
+  // Pull in fetchData and isLoading from our store
+  const { authed, config, setAuthed, fetchData, isLoading } = useBilling();
   const navigate = useNavigate();
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
+
+  // This fires once when the page loads to fetch the Google Sheet data
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   if (authed) return <Navigate to="/dashboard" />;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin === config.pin) {
+    // Use config.PIN (matching the exact key from our Google Sheet)
+    if (pin === config.PIN) {
       setAuthed(true);
       navigate({ to: "/dashboard" });
     } else {
@@ -25,6 +32,18 @@ function PinPage() {
       setPin("");
     }
   };
+
+  // Show a loading screen while we wait for Google Sheets to respond
+  if (isLoading) {
+    return (
+      <div className="min-h-screen grid place-items-center px-4 bg-gradient-to-br from-background via-accent/30 to-background">
+        <div className="flex flex-col items-center gap-4 text-festive">
+          <Loader2 className="w-12 h-12 animate-spin" />
+          <p className="font-semibold text-lg">Syncing Database...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen grid place-items-center px-4 bg-gradient-to-br from-background via-accent/30 to-background">
@@ -57,11 +76,11 @@ function PinPage() {
           <button
             type="submit"
             disabled={pin.length !== 6}
-            className="w-full mt-6 bg-festive text-primary-foreground font-semibold py-3 rounded-lg shadow-festive disabled:opacity-50"
+            className="w-full mt-6 bg-festive text-primary-foreground font-semibold py-3 rounded-lg shadow-festive disabled:opacity-50 hover:bg-red-600 transition-colors"
           >
             Unlock
           </button>
-          <p className="text-xs text-muted-foreground text-center mt-4">Demo PIN: 123456</p>
+          <p className="text-xs text-muted-foreground text-center mt-4">Demo PIN: {config.PIN}</p>
         </form>
       </div>
     </div>

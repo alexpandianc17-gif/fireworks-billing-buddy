@@ -9,11 +9,17 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
-  const { authed, config, saveConfig, products, addProduct, deleteProduct, loading } = useBilling();
-  if (!authed) return <Navigate to="/" />;
-
+  const { authed, config, saveConfig, products, addProduct, deleteProduct, isLoading: loading } = useBilling();
   const [form, setForm] = useState(config);
   const [saved, setSaved] = useState(false);
+  const [np, setNp] = useState<{ company: Company; name: string; unit: string }>({
+    company: "Both",
+    name: "",
+    unit: "nos",
+  });
+  const [pErr, setPErr] = useState("");
+
+  if (!authed) return <Navigate to="/" />;
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,13 +27,6 @@ function SettingsPage() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
-
-  const [np, setNp] = useState<{ company: Company; name: string; unit: string }>({
-    company: "Both",
-    name: "",
-    unit: "nos",
-  });
-  const [pErr, setPErr] = useState("");
 
   const addP = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,41 +51,41 @@ function SettingsPage() {
           <form onSubmit={save} className="grid md:grid-cols-2 gap-4">
             <Field label="Master PIN">
               <input
-                value={form.pin}
+                value={form.PIN}
                 maxLength={6}
-                onChange={(e) => setForm({ ...form, pin: e.target.value.replace(/\D/g, "") })}
+                onChange={(e) => setForm({ ...form, PIN: e.target.value.replace(/\D/g, "") })}
                 className="w-full border rounded px-3 py-2 bg-background"
               />
             </Field>
             <Field label="Default Discount (%)">
               <input
                 type="number"
-                value={form.defaultDiscount}
-                onChange={(e) => setForm({ ...form, defaultDiscount: +e.target.value })}
+                value={form.Default_Discount}
+                onChange={(e) => setForm({ ...form, Default_Discount: +e.target.value })}
                 className="w-full border rounded px-3 py-2 bg-background"
               />
             </Field>
             <Field label="Default CGST (%)">
               <input
                 type="number"
-                value={form.cgstRate}
-                onChange={(e) => setForm({ ...form, cgstRate: +e.target.value })}
+                value={form.CGST_Rate}
+                onChange={(e) => setForm({ ...form, CGST_Rate: +e.target.value })}
                 className="w-full border rounded px-3 py-2 bg-background"
               />
             </Field>
             <Field label="Default SGST (%)">
               <input
                 type="number"
-                value={form.sgstRate}
-                onChange={(e) => setForm({ ...form, sgstRate: +e.target.value })}
+                value={form.SGST_Rate}
+                onChange={(e) => setForm({ ...form, SGST_Rate: +e.target.value })}
                 className="w-full border rounded px-3 py-2 bg-background"
               />
             </Field>
             <Field label="Default IGST (%)">
               <input
                 type="number"
-                value={form.igstRate}
-                onChange={(e) => setForm({ ...form, igstRate: +e.target.value })}
+                value={form.IGST_Rate}
+                onChange={(e) => setForm({ ...form, IGST_Rate: +e.target.value })}
                 className="w-full border rounded px-3 py-2 bg-background"
               />
             </Field>
@@ -152,15 +151,15 @@ function SettingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => (
-                  <tr key={p.id} className="border-t">
+                {products.map((p, i) => (
+                  <tr key={i} className="border-t">
                     <td className="px-3 py-2">{p.company}</td>
                     <td className="px-3 py-2 font-medium">{p.name}</td>
-                    <td className="px-3 py-2 text-muted-foreground">{p.hsn}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{p.hsn || "3604"}</td>
                     <td className="px-3 py-2 text-muted-foreground">{p.unit}</td>
                     <td className="px-3 py-2 text-right">
                       <button
-                        onClick={() => deleteProduct(p.id)}
+                        onClick={() => deleteProduct(p.name)}
                         className="text-destructive hover:bg-destructive/10 p-1.5 rounded"
                       >
                         <Trash2 className="w-4 h-4" />

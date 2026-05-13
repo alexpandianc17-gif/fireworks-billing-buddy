@@ -82,15 +82,26 @@
 }
 
 @layer base {
-  * { border-color: var(--color-border); }
-  body { background-color: var(--color-background); color: var(--color-foreground); font-family: ui-sans-serif, system-ui, sans-serif; }
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: ui-sans-serif, system-ui, sans-serif;
+  }
 }
 
-.bg-festive { background-image: var(--gradient-festive); }
-.shadow-festive { box-shadow: var(--shadow-festive); }
+.bg-festive {
+  background-image: var(--gradient-festive);
+}
+.shadow-festive {
+  box-shadow: var(--shadow-festive);
+}
 
 /* PDF-safe color overrides: html2canvas does not support oklch */
-.pdf-mode, .pdf-mode * {
+.pdf-mode,
+.pdf-mode * {
   --background: #ffffff;
   --foreground: #1a120b;
   --card: #ffffff;
@@ -113,4 +124,6 @@
   --ember: #c0421b;
   --spark: #e8a14a;
 }
-.pdf-mode .bg-festive { background-image: linear-gradient(135deg, #c0421b, #e8a14a) !important; }
+.pdf-mode .bg-festive {
+  background-image: linear-gradient(135deg, #c0421b, #e8a14a) !important;
+}
