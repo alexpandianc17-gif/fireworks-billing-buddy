@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type Company = "Jayakavi" | "Thangakaviya" | "Both";
 
@@ -42,28 +43,36 @@ const initialProducts: Product[] = [
   { id: "8", company: "Jayakavi", name: "Twinkling Star", hsn: "3604", unit: "nos" },
 ];
 
-export const useBilling = create<BillingState>((set, get) => ({
-  authed: false,
-  selectedCompany: null,
-  config: { pin: "123456", cgstRate: 9, sgstRate: 9, igstRate: 18, defaultDiscount: 0 },
-  products: initialProducts,
-  loading: false,
-  setAuthed: (v) => set({ authed: v }),
-  setCompany: (c) => set({ selectedCompany: c }),
-  saveConfig: async (c) => {
-    set({ loading: true });
-    await new Promise((r) => setTimeout(r, 400));
-    set({ config: c, loading: false });
-  },
-  addProduct: (p) => {
-    const exists = get().products.some(
-      (x) => x.name.trim().toLowerCase() === p.name.trim().toLowerCase() && x.company === p.company,
-    );
-    if (exists) return { ok: false, error: "Duplicate product for this company." };
-    set({
-      products: [...get().products, { ...p, id: Date.now().toString(), hsn: "3604" }],
-    });
-    return { ok: true };
-  },
-  deleteProduct: (id) => set({ products: get().products.filter((p) => p.id !== id) }),
-}));
+export const useBilling = create<BillingState>()(
+  persist(
+    (set, get) => ({
+      authed: false,
+      selectedCompany: null,
+      config: { pin: "123456", cgstRate: 9, sgstRate: 9, igstRate: 18, defaultDiscount: 0 },
+      products: initialProducts,
+      loading: false,
+      setAuthed: (v) => set({ authed: v }),
+      setCompany: (c) => set({ selectedCompany: c }),
+      saveConfig: async (c) => {
+        set({ loading: true });
+        await new Promise((r) => setTimeout(r, 400));
+        set({ config: c, loading: false });
+      },
+      addProduct: (p) => {
+        const exists = get().products.some(
+          (x) =>
+            x.name.trim().toLowerCase() === p.name.trim().toLowerCase() && x.company === p.company,
+        );
+        if (exists) return { ok: false, error: "Duplicate product for this company." };
+        set({
+          products: [...get().products, { ...p, id: Date.now().toString(), hsn: "3604" }],
+        });
+        return { ok: true };
+      },
+      deleteProduct: (id) => set({ products: get().products.filter((p) => p.id !== id) }),
+    }),
+    {
+      name: "kavya-billing-storage",
+    },
+  ),
+);

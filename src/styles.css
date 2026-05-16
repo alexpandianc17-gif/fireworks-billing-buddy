@@ -1,4 +1,4 @@
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 @source "../src";
 @import "tw-animate-css";
 
@@ -30,6 +30,18 @@
   --color-ring: var(--ring);
   --color-spark: var(--spark);
   --color-ember: var(--ember);
+  --animate-sparkle: sparkle 2s ease-in-out infinite;
+  --animate-float: float 3s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2) rotate(15deg); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 :root {
@@ -88,15 +100,39 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: ui-sans-serif, system-ui, sans-serif;
+    font-family: "Outfit", "Inter", ui-sans-serif, system-ui, sans-serif;
   }
 }
 
-.bg-festive {
-  background-image: var(--gradient-festive);
+@layer utilities {
+  .bg-festive {
+    background-image: var(--gradient-festive);
+  }
+  .shadow-festive {
+    box-shadow: var(--shadow-festive);
+  }
+  .animate-sparkle {
+    animation: var(--animate-sparkle);
+  }
+  .animate-float {
+    animation: var(--animate-float);
+  }
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
 }
-.shadow-festive {
-  box-shadow: var(--shadow-festive);
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* PDF-safe color overrides: html2canvas does not support oklch */

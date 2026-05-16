@@ -123,9 +123,20 @@ function BillingPage() {
     n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="min-h-screen">
-      <TopNav />
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div className="min-h-screen relative overflow-hidden bg-[#fdf6e3]">
+      {/* Background Layer */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="/dashboard_background.png"
+          className="w-full h-full object-cover opacity-80"
+          alt=""
+        />
+        <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" />
+      </div>
+
+      <div className="relative z-10 flex flex-col h-full">
+        <TopNav />
+        <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-sm text-muted-foreground">Billing for</p>
@@ -388,6 +399,7 @@ function BillingPage() {
         </div>
       </main>
     </div>
+  </div>
   );
 }
 
