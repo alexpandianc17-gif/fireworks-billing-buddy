@@ -47,3 +47,32 @@ export async function updateSheetData(range: string, values: any[][]) {
     requestBody: { values },
   });
 }
+
+export async function deleteSheetRow(sheetName: string, rowIndex: number) {
+  const auth = await getAuth();
+  const sheets = google.sheets({ version: "v4", auth });
+  
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheet = meta.data.sheets?.find(s => s.properties?.title === sheetName);
+  const sheetId = sheet?.properties?.sheetId;
+
+  if (sheetId === undefined) return;
+
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1
+            }
+          }
+        }
+      ]
+    }
+  });
+}

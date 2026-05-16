@@ -96,6 +96,19 @@
 @layer base {
   * {
     border-color: var(--color-border);
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+  html, body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    overflow-x: hidden;
+  }
+  html::-webkit-scrollbar, body::-webkit-scrollbar {
+    display: none;
   }
   body {
     background-color: var(--color-background);
@@ -166,9 +179,9 @@
 /* Hide number input spinners (needles) */
 .no-spinner::-webkit-inner-spin-button,
 .no-spinner::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+  -webkit-appearance: none !important;
+  margin: 0 !important;
 }
 .no-spinner {
-  -moz-appearance: textfield;
+  -moz-appearance: textfield !important;
 }
