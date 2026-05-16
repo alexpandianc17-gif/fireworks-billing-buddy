@@ -1,68 +1,70 @@
 import { create } from "zustand";
-// Import your new Server Function!
-import { fetchGoogleSheetData } from "@/server/googleSheets";
+import { persist } from "zustand/middleware";
+import { type Config, type Product, type Customer, type Invoice } from "@/types/billing";
+export type { Config, Product, Customer, Invoice };
 
-export type Company = "Jayakavi" | "Thangakaviya" | "Both";
-
-export interface Product {
-  company: string;
-  name: string;
-  hsn: string;
-  unit: string;
-}
+import { getBillingData } from "@/lib/billing-actions";
 
 interface BillingState {
   authed: boolean;
-  isLoading: boolean;
   selectedCompany: "Jayakavi" | "Thangakaviya" | null;
-  config: {
-    PIN: string;
-    CGST_Rate: number;
-    SGST_Rate: number;
-    IGST_Rate: number;
-    Default_Discount: number;
-  };
+  config: Config;
   products: Product[];
-  setAuthed: (val: boolean) => void;
+  customers: Customer[];
+  invoices: Invoice[];
+  loading: boolean;
+  setAuthed: (v: boolean) => void;
   setCompany: (c: "Jayakavi" | "Thangakaviya") => void;
-  fetchData: () => Promise<void>;
-  saveConfig: (c: any) => Promise<void>;
-  addProduct: (p: any) => { ok: boolean; error?: string };
-  deleteProduct: (id: string) => void;
+  saveConfig: (c: Config) => Promise<void>;
+  setProducts: (p: Product[]) => void;
+  setCustomers: (c: Customer[]) => void;
+  addInvoice: (i: Invoice) => void;
+  syncData: () => Promise<void>;
 }
 
-export const useBilling = create<BillingState>((set) => ({
-  authed: false,
-  isLoading: true,
-  selectedCompany: null,
-  config: {
-    PIN: "123456",
-    CGST_Rate: 9,
-    SGST_Rate: 9,
-    IGST_Rate: 18,
-    Default_Discount: 0,
-  },
-  products: [],
-  setAuthed: (val) => set({ authed: val }),
-  setCompany: (c) => set({ selectedCompany: c }),
-
-  fetchData: async () => {
-    try {
-      // Call the TanStack server function directly! No fetch() needed.
-      const data = await fetchGoogleSheetData();
-
-      set((state) => ({
-        config: { ...state.config, ...data.settings },
-        products: data.products || [],
-        isLoading: false
-      }));
-    } catch (error) {
-      console.error("Error fetching from Server Function:", error);
-      set({ isLoading: false });
-    }
-  },
-
-  saveConfig: async () => { },
-  addProduct: () => ({ ok: true }),
-  deleteProduct: () => { },
-}));
+export const useBilling = create<BillingState>()(
+  persist(
+    (set, get) => ({
+      authed: false,
+      selectedCompany: null,
+      config: {
+        pin: "123456",
+        cgstRate: 9,
+        sgstRate: 9,
+        igstRate: 18,
+        defaultDiscount: 0,
+        mahamaiRate: 0,
+      },
+      products: [],
+      customers: [],
+      invoices: [],
+      loading: false,
+      setAuthed: (v) => set({ authed: v }),
+      setCompany: (c) => set({ selectedCompany: c }),
+      saveConfig: async (c) => {
+        set({ config: c });
+      },
+      setProducts: (p) => set({ products: p }),
+      setCustomers: (c) => set({ customers: c }),
+      addInvoice: (i) => set((s) => ({ invoices: [i, ...s.invoices] })),
+      syncData: async () => {
+        set({ loading: true });
+        try {
+          const data = await getBillingData();
+          set({
+            config: data.config,
+            products: data.products,
+            customers: data.customers,
+          });
+        } catch (error) {
+          console.error("Failed to sync data:", error);
+        } finally {
+          set({ loading: false });
+        }
+      },
+    }),
+    {
+      name: "kavya-billing-storage-v2",
+    },
+  ),
+);
