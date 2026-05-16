@@ -1,12 +1,13 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Download, Eye, X } from "lucide-react";
+import { Plus, Trash2, Download, Eye, X, Save, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useBilling, type Invoice } from "@/store/billing";
 import { saveInvoiceAction } from "@/lib/billing-actions";
 import { TopNav } from "@/components/TopNav";
 import { ProductCombobox } from "@/components/ProductCombobox";
+import type { PaymentStatus } from "@/types/billing";
 
 export const Route = createFileRoute("/billing")({
   component: BillingPage,
@@ -62,6 +63,11 @@ function BillingPage() {
   const invoiceRef = useRef<HTMLDivElement>(null);
   const [generating, setGenerating] = useState(false);
   const [isPreview, setIsPreview] = useState(false);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<PaymentStatus>("Unpaid");
+  const [partialAmount, setPartialAmount] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedInvoiceNo, setSavedInvoiceNo] = useState<string | null>(null);
   const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
 
 
@@ -96,33 +102,17 @@ function BillingPage() {
   const grandTotal = taxable + cgstAmt + sgstAmt + igstAmt;
 
   const generatePDF = async () => {
-    // 1. Validation
-    if (!header.customerName.trim()) {
-      alert("Please enter a customer name.");
-      return;
-    }
-    const validRows = rows.filter(r => r.name && r.qty > 0);
-    if (validRows.length === 0) {
-      alert("Please add at least one product with quantity.");
-      return;
-    }
-
     if (!invoiceRef.current || generating) return;
     setGenerating(true);
-    
-    // Add PDF-safe styles temporarily
     invoiceRef.current.classList.add("pdf-mode");
-    await new Promise(r => setTimeout(r, 100)); // Small delay for styles to apply
-    
+    await new Promise(r => setTimeout(r, 100));
     try {
-      // 2. Generate PDF
       const canvas = await html2canvas(invoiceRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
         onclone: (doc) => {
-          // FORCE REMOVE ALL MODERN COLORS in the PDF clone
           const all = doc.querySelectorAll("*");
           all.forEach((el: any) => {
             const style = window.getComputedStyle(el);
@@ -132,37 +122,16 @@ function BillingPage() {
           });
         }
       });
-      
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
       const imgProps = pdf.getImageProperties(imgData);
       const imgH = (imgProps.height * pdfW) / imgProps.width;
-      
       pdf.addImage(imgData, "PNG", 0, 0, pdfW, imgH);
       pdf.save(`${header.invoiceNo}.pdf`);
-
-      // 3. Save to Google Sheets
-      const invoiceData: Invoice = {
-        invoiceNo: header.invoiceNo,
-        date: header.date,
-        subTotal: subtotal,
-        discount: discountAmt,
-        packingCharges: handling,
-        freight: freight,
-        mahamai: currentMahamai,
-        insurance: insurance,
-        taxAmount: cgstAmt + sgstAmt + igstAmt,
-        netTotal: grandTotal,
-        itemsJson: JSON.stringify(validRows),
-      };
-      
-      await (saveInvoiceAction as any)({ data: invoiceData });
-      
     } catch (error) {
-      console.error("Failed to generate bill:", error);
-      alert("Something went wrong while generating the bill. Please try again.");
+      console.error("Failed to generate PDF:", error);
+      alert("Something went wrong while generating the PDF. Please try again.");
     } finally {
       invoiceRef.current?.classList.remove("pdf-mode");
       setGenerating(false);
@@ -170,11 +139,67 @@ function BillingPage() {
     }
   };
 
+  const validateBill = () => {
+    if (!header.customerName.trim()) {
+      alert("Please enter a customer name.");
+      return false;
+    }
+    const validRows = rows.filter(r => r.name && r.qty > 0);
+    if (validRows.length === 0) {
+      alert("Please add at least one product with quantity.");
+      return false;
+    }
+    return true;
+  };
+
+  const openSaveDialog = () => {
+    if (!validateBill()) return;
+    setSaveStatus("Unpaid");
+    setPartialAmount(0);
+    setIsSaveDialogOpen(true);
+  };
+
+  const handleSaveInvoice = async () => {
+    const validRows = rows.filter(r => r.name && r.qty > 0);
+    const received = saveStatus === "Paid" ? grandTotal : saveStatus === "Partial" ? partialAmount : 0;
+    const balance = grandTotal - received;
+    const invoiceData: Invoice = {
+      invoiceNo: header.invoiceNo,
+      date: header.date,
+      customerName: header.customerName,
+      customerGstin: header.customerGstin,
+      subTotal: subtotal,
+      discount: discountAmt,
+      packingCharges: handling,
+      freight,
+      mahamai: currentMahamai,
+      insurance,
+      taxAmount,
+      netTotal: grandTotal,
+      itemsJson: JSON.stringify(validRows),
+      paymentStatus: saveStatus,
+      amountReceived: received,
+      balanceDue: balance,
+    };
+    setIsSaving(true);
+    try {
+      await (saveInvoiceAction as any)({ data: invoiceData });
+      setSavedInvoiceNo(header.invoiceNo);
+      setIsSaveDialogOpen(false);
+    } catch (err) {
+      console.error("Failed to save invoice:", err);
+      alert("Failed to save invoice. Please check your connection and try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const fmt = (n: number) =>
     n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-[#fdf6e3]">
+    <>
+      <div className="min-h-screen relative overflow-hidden bg-[#fdf6e3]">
       {/* Background Layer */}
       <div className="absolute inset-0 z-0">
         <img
@@ -201,19 +226,25 @@ function BillingPage() {
               <Eye className="w-4 h-4" />
               Preview
             </button>
+            {savedInvoiceNo && (
+              <button
+                onClick={generatePDF}
+                disabled={generating}
+                className="bg-white/50 border-2 border-[#c0421b]/40 text-[#c0421b] px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#c0421b]/5 disabled:opacity-50 transition-all"
+              >
+                {generating ? (
+                  <div className="w-4 h-4 border-2 border-[#c0421b]/30 border-t-[#c0421b] rounded-full animate-spin" />
+                ) : (
+                  <><Download className="w-4 h-4" /> PDF</>                
+                )}
+              </button>
+            )}
             <button
-              onClick={generatePDF}
-              disabled={generating}
-              className="bg-festive text-white px-6 py-2 rounded-xl text-sm font-bold shadow-festive hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2 disabled:opacity-50"
+              onClick={openSaveDialog}
+              className="bg-festive text-white px-6 py-2 rounded-xl text-sm font-bold shadow-festive hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
             >
-              {generating ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Download className="w-4 h-4" />
-                  Generate PDF
-                </>
-              )}
+              <Save className="w-4 h-4" />
+              Save Invoice
             </button>
           </div>
         </div>
@@ -522,6 +553,8 @@ function BillingPage() {
           </div>
         </div>
       </main>
+      </div> {/* end relative z-10 */}
+      </div> {/* end min-h-screen */}
 
       {/* Preview Modal */}
       {isPreview && (
@@ -616,8 +649,120 @@ function BillingPage() {
           </div>
         </div>
       )}
-    </div>
-  </div>
+
+      {/* Save Invoice Dialog */}
+      {isSaveDialogOpen && (
+        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-black text-[#4a3728]">Save Invoice</h2>
+              <button onClick={() => setIsSaveDialogOpen(false)} className="p-2 rounded-lg hover:bg-gray-100">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            
+            <div className="bg-[#fdfcfb] rounded-xl p-4 border border-[#d4bc8d]/20 space-y-1">
+              <p className="text-xs text-[#8b6d4d] uppercase font-bold">Invoice Summary</p>
+              <p className="font-bold text-[#4a3728]">{header.customerName}</p>
+              <p className="text-[#8b6d4d] text-sm">#{header.invoiceNo} · {header.date}</p>
+              <p className="text-2xl font-black text-[#c0421b] pt-1">₹ {fmt(grandTotal)}</p>
+            </div>
+
+            <div>
+              <p className="text-sm font-bold text-[#4a3728] mb-3">Payment Status</p>
+              <div className="grid grid-cols-3 gap-2">
+                {(["Unpaid", "Partial", "Paid"] as PaymentStatus[]).map((s) => {
+                  const icons = { Unpaid: AlertCircle, Partial: Clock, Paid: CheckCircle };
+                  const colors = {
+                    Unpaid: saveStatus === "Unpaid" ? "border-red-500 bg-red-50 text-red-700" : "border-gray-200 text-gray-500",
+                    Partial: saveStatus === "Partial" ? "border-amber-500 bg-amber-50 text-amber-700" : "border-gray-200 text-gray-500",
+                    Paid: saveStatus === "Paid" ? "border-green-500 bg-green-50 text-green-700" : "border-gray-200 text-gray-500",
+                  };
+                  const Icon = icons[s];
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => setSaveStatus(s)}
+                      className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 font-bold text-sm transition-all ${colors[s]}`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      {s}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {saveStatus === "Partial" && (
+              <div>
+                <label className="text-sm font-bold text-[#4a3728]">Amount Received Now</label>
+                <div className="relative mt-2">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8b6d4d] font-bold">₹</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={grandTotal}
+                    value={partialAmount}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => setPartialAmount(Math.min(+e.target.value, grandTotal))}
+                    className="w-full border-2 border-amber-300 rounded-xl pl-8 pr-4 py-3 bg-amber-50 focus:border-amber-500 outline-none no-spinner font-bold text-amber-800"
+                  />
+                </div>
+                <p className="text-xs text-[#8b6d4d] mt-1">
+                  Balance due: <span className="font-bold text-red-500">₹ {fmt(grandTotal - partialAmount)}</span>
+                </p>
+              </div>
+            )}
+
+            {saveStatus === "Paid" && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-green-700">
+                <span className="font-bold">Full payment of ₹ {fmt(grandTotal)}</span> will be recorded.
+              </div>
+            )}
+
+            {saveStatus === "Unpaid" && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+                Invoice will be saved as <span className="font-bold">Unpaid</span>. You can record payments later.
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setIsSaveDialogOpen(false)}
+                className="flex-1 border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveInvoice}
+                disabled={isSaving || (saveStatus === "Partial" && partialAmount <= 0)}
+                className="flex-[2] bg-festive text-white py-3 rounded-xl font-bold shadow-festive hover:scale-[1.01] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <><Save className="w-4 h-4" /> Save Invoice</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Saved Success Banner */}
+      {savedInvoiceNo && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] bg-green-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4">
+          <CheckCircle className="w-6 h-6 shrink-0" />
+          <div>
+            <p className="font-bold">Invoice {savedInvoiceNo} Saved!</p>
+            <p className="text-sm text-green-100">Synced to Google Sheets. Click PDF to download.</p>
+          </div>
+          <button onClick={() => setSavedInvoiceNo(null)} className="ml-4 p-1 hover:bg-white/20 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 

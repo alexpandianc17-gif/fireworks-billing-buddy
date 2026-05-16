@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Sparkles, Settings, FilePlus, LogOut } from "lucide-react";
+import { Sparkles, Settings, FilePlus, LogOut, Receipt } from "lucide-react";
 import { useBilling } from "@/store/billing";
 
 export function TopNav() {
@@ -22,6 +22,12 @@ export function TopNav() {
             className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 hover:bg-accent ${path === "/dashboard" ? "bg-accent" : ""}`}
           >
             <FilePlus className="w-4 h-4" /> New Bill
+          </Link>
+          <Link
+            to="/invoices"
+            className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2 hover:bg-accent ${path === "/invoices" ? "bg-accent" : ""}`}
+          >
+            <Receipt className="w-4 h-4" /> Invoices
           </Link>
           <Link
             to="/settings"
