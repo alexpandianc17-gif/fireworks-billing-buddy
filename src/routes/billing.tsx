@@ -717,7 +717,7 @@ function BillingPage() {
             
             <div className="p-8 flex justify-center bg-gray-100 min-h-full">
               <div className="shadow-2xl scale-[0.8] origin-top md:scale-100">
-                {selectedCompany === "Jayakavi" ? (
+                {(selectedCompany || "").includes("Jayakavi") ? (
                   <JayakaviTemplate 
                     profile={companyProfile!} header={header} transport={transport} rows={rows}
                     subtotal={subtotal} discountAmt={discountAmt} handling={handling}
@@ -745,7 +745,7 @@ function BillingPage() {
       {/* Hidden template for PDF capture */}
       <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
         <div ref={pdfTemplateRef}>
-          {selectedCompany === "Jayakavi" ? (
+          {(selectedCompany || "").includes("Jayakavi") ? (
             <JayakaviTemplate 
               profile={companyProfile!} header={header} transport={transport} rows={rows}
               subtotal={subtotal} discountAmt={discountAmt} handling={handling}

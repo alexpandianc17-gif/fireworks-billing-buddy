@@ -51,7 +51,7 @@ function Dashboard() {
   };
 
   return (
-    <div className="h-[100dvh] w-full relative overflow-hidden bg-[#fdf6e3] flex flex-col">
+    <div className="min-h-screen w-full relative overflow-y-auto bg-[#fdf6e3] flex flex-col">
       {/* Background Layer */}
       <div className="absolute inset-0 z-0">
         <img

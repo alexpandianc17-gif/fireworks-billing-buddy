@@ -307,7 +307,7 @@ export function ThangakaviyaTemplate({
         <tbody>
           <tr>
             <td style={{ border: b, padding: "4px", width: "55%", verticalAlign: "top" }}>
-              <div style={{ fontSize: "9px" }}>Depot At : VARAGANOOR Village</div>
+              <div style={{ fontSize: "9px" }}>Depot At : {profile.address.split("\n")[0] || "SIVAKASI"}</div>
               <div style={{ fontSize: "9px" }}>Transporation Mode : {transport.despatchedThrough}</div>
               <div style={{ fontSize: "9px" }}>Vechicle No : {transport.vehicleNo}</div>
               <div style={{ fontSize: "9px" }}>Date &amp; Time of Supply</div>
