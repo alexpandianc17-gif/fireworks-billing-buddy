@@ -1,13 +1,15 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
-import { Plus, Trash2, Download, Eye, X, Save, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { useRef, useState } from "react";
+import { Plus, Trash2, Download, Eye, X, Save, CheckCircle, Clock, AlertCircle, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useBilling, type Invoice } from "@/store/billing";
-import { saveInvoiceAction } from "@/lib/billing-actions";
+import { saveInvoiceAction, addCustomerAction } from "@/lib/billing-actions";
 import { TopNav } from "@/components/TopNav";
 import { ProductCombobox } from "@/components/ProductCombobox";
-import type { PaymentStatus } from "@/types/billing";
+import type { PaymentStatus, TransportHeader } from "@/types/billing";
+import { JayakaviTemplate } from "@/components/JayakaviTemplate";
+import { ThangakaviyaTemplate } from "@/components/ThangakaviyaTemplate";
 
 export const Route = createFileRoute("/billing")({
   component: BillingPage,
@@ -38,7 +40,8 @@ const blankRow = (): Row => ({
 });
 
 function BillingPage() {
-  const { authed, selectedCompany, products, customers, config } = useBilling();
+  const { authed, selectedCompany, products, customers, config, companies, syncData } = useBilling();
+  const companyProfile = companies.find(c => c.name === selectedCompany);
   const today = new Date().toISOString().slice(0, 10);
   const [header, setHeader] = useState({
     invoiceNo: `INV-${Date.now().toString().slice(-6)}`,
@@ -47,6 +50,11 @@ function BillingPage() {
     customerAddress: "",
     customerGstin: "",
     transport: "",
+  });
+
+  const [transport, setTransport] = useState<TransportHeader>({
+    lrNo: "", lrDate: "", orderNo: "", orderDate: "",
+    despatchedThrough: "", destination: "", vehicleNo: "", termsOfDelivery: "",
   });
 
   const [rows, setRows] = useState<Row[]>([blankRow()]);
@@ -68,21 +76,21 @@ function BillingPage() {
   const [partialAmount, setPartialAmount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [savedInvoiceNo, setSavedInvoiceNo] = useState<string | null>(null);
-  const [focusedRowId, setFocusedRowId] = useState<string | null>(null);
+  const [focusRef, setFocusRef] = useState<{ id: string; field: "cases" | "qty" | "rate" } | null>(null);
+  const pdfTemplateRef = useRef<HTMLDivElement>(null);
 
 
   if (!authed) return <Navigate to="/" />;
-  if (!selectedCompany) return <Navigate to="/dashboard" />;
+  if (!selectedCompany || !companyProfile) return <Navigate to="/dashboard" />;
 
-  const companyName =
-    selectedCompany === "Jayakavi" ? "Jayakavi Fire Works" : "Sri Thangakaviya Fireworks";
+  const companyName = companyProfile.name;
 
   const updateRow = (id: string, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   const addRow = () => {
     const nr = blankRow();
     setRows((rs) => [...rs, nr]);
-    setFocusedRowId(nr.id);
+    setFocusRef({ id: nr.id, field: "cases" });
   };
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
@@ -102,38 +110,46 @@ function BillingPage() {
   const grandTotal = taxable + cgstAmt + sgstAmt + igstAmt;
 
   const generatePDF = async () => {
-    if (!invoiceRef.current || generating) return;
+    const el = pdfTemplateRef.current;
+    if (!el || generating) return;
     setGenerating(true);
-    invoiceRef.current.classList.add("pdf-mode");
-    await new Promise(r => setTimeout(r, 100));
+    await new Promise(r => setTimeout(r, 150)); // Let template render
     try {
-      const canvas = await html2canvas(invoiceRef.current, {
+      const canvas = await html2canvas(el, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
+        width: el.scrollWidth,
+        height: el.scrollHeight,
         onclone: (doc) => {
           const all = doc.querySelectorAll("*");
-          all.forEach((el: any) => {
-            const style = window.getComputedStyle(el);
-            if (style.color.includes("okl")) el.style.color = "#1a120b";
-            if (style.backgroundColor.includes("okl")) el.style.backgroundColor = "#ffffff";
-            if (style.borderColor.includes("okl")) el.style.borderColor = "#e5d9cc";
+          all.forEach((node: any) => {
+            const s = window.getComputedStyle(node);
+            if (s.color?.includes("okl")) node.style.color = "#000000";
+            if (s.backgroundColor?.includes("okl")) node.style.backgroundColor = "#ffffff";
+            if (s.borderColor?.includes("okl")) node.style.borderColor = "#000000";
           });
         }
       });
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
       const imgProps = pdf.getImageProperties(imgData);
       const imgH = (imgProps.height * pdfW) / imgProps.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfW, imgH);
+      // Multi-page if content overflows
+      let y = 0;
+      while (y < imgH) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, -y, pdfW, imgH);
+        y += pdfH;
+      }
       pdf.save(`${header.invoiceNo}.pdf`);
     } catch (error) {
       console.error("Failed to generate PDF:", error);
       alert("Something went wrong while generating the PDF. Please try again.");
     } finally {
-      invoiceRef.current?.classList.remove("pdf-mode");
       setGenerating(false);
       setIsPreview(false);
     }
@@ -184,6 +200,23 @@ function BillingPage() {
     setIsSaving(true);
     try {
       await (saveInvoiceAction as any)({ data: invoiceData });
+      
+      // Auto-add customer if new
+      const exists = customers.some(c => c.name.toLowerCase() === header.customerName.toLowerCase());
+      if (!exists && header.customerName.trim()) {
+        await (addCustomerAction as any)({
+          data: {
+            name: header.customerName,
+            address1: header.customerAddress,
+            address2: "",
+            address3: "",
+            gstin: header.customerGstin,
+            pan: ""
+          }
+        });
+        await (syncData as any)();
+      }
+
       setSavedInvoiceNo(header.invoiceNo);
       setIsSaveDialogOpen(false);
     } catch (err) {
@@ -332,15 +365,82 @@ function BillingPage() {
               </div>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               <p className="text-xs uppercase font-bold text-muted-foreground mb-2">Transport & Delivery</p>
-              <textarea
-                placeholder="Transport / LR details / Destination"
-                value={header.transport}
-                onChange={(e) => setHeader({ ...header, transport: e.target.value })}
-                rows={6}
-                className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-4 py-2 bg-white/30 h-[190px] focus:border-[#c0421b] outline-none"
-              />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">LR No.</label>
+                  <input
+                    placeholder="LR Number"
+                    value={transport.lrNo}
+                    onChange={(e) => setTransport({ ...transport, lrNo: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">LR Date</label>
+                  <input
+                    type="date"
+                    value={transport.lrDate}
+                    onChange={(e) => setTransport({ ...transport, lrDate: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Order No.</label>
+                  <input
+                    placeholder="Buyer's Order No."
+                    value={transport.orderNo}
+                    onChange={(e) => setTransport({ ...transport, orderNo: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Order Date</label>
+                  <input
+                    type="date"
+                    value={transport.orderDate}
+                    onChange={(e) => setTransport({ ...transport, orderDate: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Despatched Through</label>
+                  <input
+                    placeholder="e.g. ASSAM ROAD WAYS"
+                    value={transport.despatchedThrough}
+                    onChange={(e) => setTransport({ ...transport, despatchedThrough: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Destination</label>
+                  <input
+                    placeholder="e.g. Madurai"
+                    value={transport.destination}
+                    onChange={(e) => setTransport({ ...transport, destination: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Vehicle No.</label>
+                  <input
+                    placeholder="Vehicle Number"
+                    value={transport.vehicleNo}
+                    onChange={(e) => setTransport({ ...transport, vehicleNo: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Terms of Delivery</label>
+                  <input
+                    placeholder="e.g. Ex-Factory"
+                    value={transport.termsOfDelivery}
+                    onChange={(e) => setTransport({ ...transport, termsOfDelivery: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -373,9 +473,9 @@ function BillingPage() {
                         min={0}
                         value={r.cases}
                         ref={(el) => {
-                          if (r.id === focusedRowId && el) {
+                          if (focusRef?.id === r.id && focusRef?.field === "cases" && el) {
                             el.focus();
-                            setFocusedRowId(null);
+                            setFocusRef(null);
                           }
                         }}
                         onFocus={(e) => e.target.select()}
@@ -387,7 +487,7 @@ function BillingPage() {
                       <ProductCombobox
                         products={products}
                         value={r.name}
-                        onSelect={(p) =>
+                        onSelect={(p) => {
                           updateRow(r.id, {
                             code: p.code,
                             name: p.name,
@@ -395,8 +495,9 @@ function BillingPage() {
                             unit: p.unit,
                             packing: p.packing,
                             rate: selectedCompany === "Jayakavi" ? p.rateA : p.rateB,
-                          })
-                        }
+                          });
+                          setFocusRef({ id: r.id, field: "qty" });
+                        }}
                       />
                     </td>
                     <td className="px-2 py-3 text-[#8b6d4d] text-xs">{r.hsn}</td>
@@ -406,6 +507,12 @@ function BillingPage() {
                         type="number"
                         min={0}
                         value={r.qty}
+                        ref={(el) => {
+                          if (focusRef?.id === r.id && focusRef?.field === "qty" && el) {
+                            el.focus();
+                            setFocusRef(null);
+                          }
+                        }}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) => updateRow(r.id, { qty: +e.target.value })}
                         className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-right no-spinner"
@@ -418,6 +525,12 @@ function BillingPage() {
                         min={0}
                         step="0.01"
                         value={r.rate}
+                        ref={(el) => {
+                          if (focusRef?.id === r.id && focusRef?.field === "rate" && el) {
+                            el.focus();
+                            setFocusRef(null);
+                          }
+                        }}
                         onFocus={(e) => e.target.select()}
                         onChange={(e) => updateRow(r.id, { rate: +e.target.value })}
                         className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-right no-spinner"
@@ -563,15 +676,16 @@ function BillingPage() {
             <div className="sticky top-0 z-[110] bg-white border-b px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Eye className="w-5 h-5 text-[#c0421b]" />
-                <h3 className="font-bold text-[#4a3728]">Bill Preview</h3>
+                <h3 className="font-bold text-[#4a3728]">Bill Preview ({selectedCompany})</h3>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={generatePDF}
-                  className="bg-[#c0421b] text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-[#a03616]"
+                  disabled={generating}
+                  className="bg-[#c0421b] text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-[#a03616] disabled:opacity-50"
                 >
                   <Download className="w-4 h-4" />
-                  Download PDF
+                  {generating ? "Generating..." : "Download PDF"}
                 </button>
                 <button 
                   onClick={() => setIsPreview(false)}
@@ -582,73 +696,57 @@ function BillingPage() {
               </div>
             </div>
             
-            <div className="p-8 pb-20">
-              <div className="max-w-[210mm] mx-auto bg-white border rounded-lg shadow-sm p-12 space-y-8">
-                {/* Simplified preview header */}
-                <div className="flex justify-between items-start border-b-4 border-[#c0421b] pb-6">
-                  <div>
-                    <h2 className="text-3xl font-black text-[#c0421b]">{selectedCompany === "Jayakavi" ? "SREE JAYAKAVI FIREWORKS" : "SRI THANGAKAVIYA FIREWORKS"}</h2>
-                    <p className="text-sm text-[#8b6d4d] tracking-widest uppercase">Quality Manufacturers of High-Grade Fireworks</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-black text-[#4a3728]">INVOICE</p>
-                    <p className="text-[#8b6d4d]">#{header.invoiceNo}</p>
-                    <p className="text-[#8b6d4d]">{header.date}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-8 text-sm">
-                  <div className="space-y-1">
-                    <p className="font-bold text-[#c0421b] uppercase text-[10px]">Bill To</p>
-                    <p className="font-black text-lg text-[#4a3728]">{header.customerName}</p>
-                    <p className="text-[#8b6d4d] whitespace-pre-wrap">{header.customerAddress}</p>
-                    {header.customerGstin && <p className="text-[#8b6d4d]">GSTIN: {header.customerGstin}</p>}
-                  </div>
-                  <div className="text-right space-y-1">
-                    <p className="font-bold text-[#c0421b] uppercase text-[10px]">Transport</p>
-                    <p className="text-[#8b6d4d] whitespace-pre-wrap">{header.transport || "Self"}</p>
-                  </div>
-                </div>
-
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="bg-[#fdfcfb] border-y-2 border-[#d4bc8d]/20 text-[#4a3728]">
-                      <th className="text-left py-3 px-2">Description</th>
-                      <th className="text-center py-3 px-2">HSN</th>
-                      <th className="text-center py-3 px-2">Qty</th>
-                      <th className="text-right py-3 px-2">Rate</th>
-                      <th className="text-right py-3 px-2">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#d4bc8d]/10">
-                    {rows.filter(r => r.name).map(r => (
-                      <tr key={r.id}>
-                        <td className="py-3 px-2 font-bold">{r.name} <span className="text-[10px] text-gray-400 font-normal ml-2">{r.packing}</span></td>
-                        <td className="text-center py-3 px-2 text-gray-500">{r.hsn}</td>
-                        <td className="text-center py-3 px-2">{r.qty} {r.unit}</td>
-                        <td className="text-right py-3 px-2">{r.rate.toFixed(2)}</td>
-                        <td className="text-right py-3 px-2 font-bold">{(r.qty * r.rate).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <div className="flex justify-end pt-8">
-                  <div className="w-72 space-y-3 bg-[#fdfcfb] p-6 rounded-xl border border-[#d4bc8d]/20">
-                    <div className="flex justify-between text-[#8b6d4d] text-xs"><span>Subtotal:</span><span>₹{subtotal.toFixed(2)}</span></div>
-                    {discount > 0 && <div className="flex justify-between text-green-600 text-xs"><span>Discount ({discount}%):</span><span>- ₹{discountAmt.toFixed(2)}</span></div>}
-                    <div className="flex justify-between text-[#8b6d4d] text-xs"><span>Tax Amount:</span><span>₹{taxAmount.toFixed(2)}</span></div>
-                    <div className="flex justify-between text-[#4a3728] font-black text-xl border-t-2 border-[#c0421b]/20 pt-3">
-                      <span>Total:</span>
-                      <span>₹{grandTotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
+            <div className="p-8 flex justify-center bg-gray-100 min-h-full">
+              <div className="shadow-2xl scale-[0.8] origin-top md:scale-100">
+                {selectedCompany === "Jayakavi" ? (
+                  <JayakaviTemplate 
+                    profile={companyProfile!} header={header} transport={transport} rows={rows}
+                    subtotal={subtotal} discountAmt={discountAmt} handling={handling}
+                    mahamai={currentMahamai} insurance={insurance} freight={freight}
+                    taxType={taxType} cgst={cgst} sgst={sgst} igst={igst}
+                    cgstAmt={cgstAmt} sgstAmt={sgstAmt} igstAmt={igstAmt}
+                    taxAmount={taxAmount} taxable={taxable} grandTotal={grandTotal}
+                  />
+                ) : (
+                  <ThangakaviyaTemplate 
+                    profile={companyProfile!} header={header} transport={transport} rows={rows}
+                    subtotal={subtotal} discountAmt={discountAmt} discount={discount}
+                    handling={handling} mahamai={currentMahamai} insurance={insurance} freight={freight}
+                    taxType={taxType} cgst={cgst} sgst={sgst} igst={igst}
+                    cgstAmt={cgstAmt} sgstAmt={sgstAmt} igstAmt={igstAmt}
+                    taxAmount={taxAmount} taxable={taxable} grandTotal={grandTotal}
+                  />
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Hidden template for PDF capture */}
+      <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
+        <div ref={pdfTemplateRef}>
+          {selectedCompany === "Jayakavi" ? (
+            <JayakaviTemplate 
+              profile={companyProfile!} header={header} transport={transport} rows={rows}
+              subtotal={subtotal} discountAmt={discountAmt} handling={handling}
+              mahamai={currentMahamai} insurance={insurance} freight={freight}
+              taxType={taxType} cgst={cgst} sgst={sgst} igst={igst}
+              cgstAmt={cgstAmt} sgstAmt={sgstAmt} igstAmt={igstAmt}
+              taxAmount={taxAmount} taxable={taxable} grandTotal={grandTotal}
+            />
+          ) : (
+            <ThangakaviyaTemplate 
+              profile={companyProfile!} header={header} transport={transport} rows={rows}
+              subtotal={subtotal} discountAmt={discountAmt} discount={discount}
+              handling={handling} mahamai={currentMahamai} insurance={insurance} freight={freight}
+              taxType={taxType} cgst={cgst} sgst={sgst} igst={igst}
+              cgstAmt={cgstAmt} sgstAmt={sgstAmt} igstAmt={igstAmt}
+              taxAmount={taxAmount} taxable={taxable} grandTotal={grandTotal}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Save Invoice Dialog */}
       {isSaveDialogOpen && (

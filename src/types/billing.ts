@@ -1,4 +1,5 @@
 export interface Product {
+  company: string;
   code: string;
   name: string;
   hsn: string;
@@ -17,6 +18,17 @@ export interface Customer {
   pan: string;
 }
 
+export interface CompanyProfile {
+  name: string;
+  address: string;
+  gstin: string;
+  licNo: string;
+  bankName: string;
+  accountNo: string;
+  ifsc: string;
+  branch: string;
+}
+
 export interface Config {
   pin: string;
   cgstRate: number;
@@ -24,6 +36,18 @@ export interface Config {
   igstRate: number;
   defaultDiscount: number;
   mahamaiRate: number;
+}
+
+/** Transport/despatch fields on each invoice */
+export interface TransportHeader {
+  lrNo: string;
+  lrDate: string;
+  orderNo: string;
+  orderDate: string;
+  despatchedThrough: string;
+  destination: string;
+  vehicleNo: string;
+  termsOfDelivery: string;
 }
 
 export type PaymentStatus = "Unpaid" | "Partial" | "Paid";
@@ -48,10 +72,10 @@ export interface Invoice {
 }
 
 export interface Payment {
-  paymentId: string;
-  invoiceNo: string;
-  date: string;
-  amountReceived: number;
-  paymentMethod: "Cash" | "UPI" | "NEFT" | "Cheque";
-  note?: string;
+  Payment_ID: string;
+  Invoice_No: string;
+  Date: string;
+  Amount_Received: number;
+  Payment_Method: "Cash" | "UPI" | "NEFT" | "Cheque";
+  Note?: string;
 }

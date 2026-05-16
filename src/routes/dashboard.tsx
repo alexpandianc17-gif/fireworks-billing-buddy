@@ -1,4 +1,5 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { Flame, Sparkles } from "lucide-react";
 import { motion, Variants } from "framer-motion";
 import { useBilling } from "@/store/billing";
@@ -33,12 +34,18 @@ const itemVariants: Variants = {
 };
 
 function Dashboard() {
-  const { authed, setCompany } = useBilling();
+  const { authed, setCompany, companies = [], syncData, loading } = useBilling();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (companies.length === 0) {
+      syncData();
+    }
+  }, []);
 
   if (!authed) return <Navigate to="/" />;
 
-  const pick = (c: "Jayakavi" | "Thangakaviya") => {
+  const pick = (c: string) => {
     setCompany(c);
     navigate({ to: "/billing" });
   };
@@ -73,45 +80,56 @@ function Dashboard() {
           </motion.div>
 
           <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl">
-            <motion.button
-              variants={itemVariants}
-              onClick={() => pick("Jayakavi")}
-              className="group relative overflow-hidden rounded-[2.5rem] border-2 border-[#d4bc8d]/30 bg-white/60 backdrop-blur-md p-10 text-left transition-all duration-500 hover:border-[#c0421b]/50 hover:shadow-2xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-[#c0421b]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-14 h-14 rounded-2xl bg-[#c0421b]/10 flex items-center justify-center mb-6 group-hover:bg-[#c0421b]/20 transition-all">
-                <Sparkles className="w-8 h-8 text-[#c0421b]" />
+            {companies.length > 0 ? (
+              companies.map((company, index) => {
+                const Icon = index % 2 === 0 ? Sparkles : Flame;
+                return (
+                  <motion.button
+                    key={company.name}
+                    variants={itemVariants}
+                    onClick={() => pick(company.name)}
+                    className="group relative overflow-hidden rounded-[2.5rem] border-2 border-[#d4bc8d]/30 bg-white/60 backdrop-blur-md p-10 text-left transition-all duration-500 hover:border-[#c0421b]/50 hover:shadow-2xl"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#c0421b]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="w-14 h-14 rounded-2xl bg-[#c0421b]/10 flex items-center justify-center mb-6 group-hover:bg-[#c0421b]/20 transition-all">
+                      <Icon className="w-8 h-8 text-[#c0421b]" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-[#4a3728] mb-2 uppercase">
+                      {company.name}
+                    </h2>
+                    <p className="text-[#8b6d4d] font-medium leading-relaxed text-sm line-clamp-2">
+                      {company.address}
+                    </p>
+                    <div className="mt-8 flex items-center text-[10px] font-black uppercase tracking-[0.3em] text-[#c0421b]">
+                      Select Company <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
+                    </div>
+                  </motion.button>
+                );
+              })
+            ) : loading ? (
+              <div className="col-span-full h-48 flex items-center justify-center">
+                 <div className="w-12 h-12 border-4 border-[#c0421b] border-t-transparent rounded-full animate-spin" />
               </div>
-              <h2 className="text-2xl font-bold text-[#4a3728] mb-2">
-                JAYAKAVI
-              </h2>
-              <p className="text-[#8b6d4d] font-medium leading-relaxed text-sm">
-                Primary catalogue with standard rates and packing details.
-              </p>
-              <div className="mt-8 flex items-center text-[10px] font-black uppercase tracking-[0.3em] text-[#c0421b]">
-                Select Company <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
-              </div>
-            </motion.button>
-
-            <motion.button
-              variants={itemVariants}
-              onClick={() => pick("Thangakaviya")}
-              className="group relative overflow-hidden rounded-[2.5rem] border-2 border-[#d4bc8d]/30 bg-white/60 backdrop-blur-md p-10 text-left transition-all duration-500 hover:border-[#c0421b]/50 hover:shadow-2xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-[#c0421b]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-14 h-14 rounded-2xl bg-[#c0421b]/10 flex items-center justify-center mb-6 group-hover:bg-[#c0421b]/20 transition-all">
-                <Flame className="w-8 h-8 text-[#c0421b]" />
-              </div>
-              <h2 className="text-2xl font-bold text-[#4a3728] mb-2">
-                THANGAKAVIYA
-              </h2>
-              <p className="text-[#8b6d4d] font-medium leading-relaxed text-sm">
-                Specialized catalogue for premium crackers and wholesale orders.
-              </p>
-              <div className="mt-8 flex items-center text-[10px] font-black uppercase tracking-[0.3em] text-[#c0421b]">
-                Select Company <span className="ml-2 group-hover:translate-x-2 transition-transform">→</span>
-              </div>
-            </motion.button>
+            ) : (
+              <motion.div 
+                variants={itemVariants}
+                className="col-span-full bg-white/60 backdrop-blur-md border-2 border-[#d4bc8d]/20 rounded-[3rem] p-16 text-center shadow-xl"
+              >
+                <div className="w-20 h-20 bg-[#d4bc8d]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Sparkles className="w-10 h-10 text-[#d4bc8d]" />
+                </div>
+                <h3 className="text-2xl font-bold text-[#4a3728] mb-3">No Companies Found</h3>
+                <p className="text-[#8b6d4d] mb-8 max-w-sm mx-auto">
+                  Your "Companies" sheet seems to be empty. Please add your company profiles in the Settings page to get started.
+                </p>
+                <button 
+                  onClick={() => navigate({ to: "/settings" })}
+                  className="bg-[#c0421b] text-white px-8 py-4 rounded-2xl font-bold shadow-xl hover:scale-105 transition-all uppercase tracking-widest"
+                >
+                  Configure Settings
+                </button>
+              </motion.div>
+            )}
           </div>
         </main>
       </motion.div>
