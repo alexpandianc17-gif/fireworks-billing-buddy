@@ -21,6 +21,8 @@ function PinPage() {
     e.preventDefault();
     if (pin === config.pin) {
       setIsUnlocking(true);
+      // Sync in background
+      useBilling.getState().syncData();
       setTimeout(() => {
         setAuthed(true);
         navigate({ to: "/dashboard" });

@@ -46,51 +46,51 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.985 0.005 80);
-  --foreground: oklch(0.18 0.03 30);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.03 30);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.18 0.03 30);
-  --primary: oklch(0.55 0.22 30);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.02 60);
-  --secondary-foreground: oklch(0.2 0.04 40);
-  --muted: oklch(0.96 0.01 70);
-  --muted-foreground: oklch(0.45 0.03 50);
-  --accent: oklch(0.92 0.06 80);
-  --accent-foreground: oklch(0.2 0.04 40);
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.02 60);
-  --input: oklch(0.9 0.02 60);
-  --ring: oklch(0.6 0.18 40);
-  --spark: oklch(0.78 0.18 70);
-  --ember: oklch(0.62 0.22 35);
-  --gradient-festive: linear-gradient(135deg, oklch(0.62 0.22 35), oklch(0.78 0.18 70));
-  --shadow-festive: 0 10px 30px -10px oklch(0.55 0.22 30 / 0.35);
+  --background: #fdfcfb;
+  --foreground: #1a120b;
+  --card: #ffffff;
+  --card-foreground: #1a120b;
+  --popover: #ffffff;
+  --popover-foreground: #1a120b;
+  --primary: #c0421b;
+  --primary-foreground: #ffffff;
+  --secondary: #f5ede1;
+  --secondary-foreground: #1a120b;
+  --muted: #f9f6f2;
+  --muted-foreground: #8b6d4d;
+  --accent: #fde8d0;
+  --accent-foreground: #4a3728;
+  --destructive: #c0421b;
+  --destructive-foreground: #ffffff;
+  --border: #e5d9cc;
+  --input: #e5d9cc;
+  --ring: #c0421b;
+  --spark: #e8a14a;
+  --ember: #c0421b;
+  --gradient-festive: linear-gradient(135deg, #c0421b, #e8a14a);
+  --shadow-festive: 0 10px 30px -10px rgba(192, 66, 27, 0.35);
 }
 
 .dark {
-  --background: oklch(0.16 0.02 30);
-  --foreground: oklch(0.98 0.01 60);
-  --card: oklch(0.22 0.03 30);
-  --card-foreground: oklch(0.98 0.01 60);
-  --popover: oklch(0.22 0.03 30);
-  --popover-foreground: oklch(0.98 0.01 60);
-  --primary: oklch(0.7 0.2 50);
-  --primary-foreground: oklch(0.15 0.02 30);
-  --secondary: oklch(0.28 0.03 40);
-  --secondary-foreground: oklch(0.98 0.01 60);
-  --muted: oklch(0.28 0.03 40);
-  --muted-foreground: oklch(0.7 0.02 60);
-  --accent: oklch(0.32 0.06 50);
-  --accent-foreground: oklch(0.98 0.01 60);
-  --destructive: oklch(0.6 0.22 25);
-  --destructive-foreground: oklch(0.98 0.01 60);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.18 50);
+  --background: #1a120b;
+  --foreground: #fdfcfb;
+  --card: #251a12;
+  --card-foreground: #fdfcfb;
+  --popover: #251a12;
+  --popover-foreground: #fdfcfb;
+  --primary: #e8a14a;
+  --primary-foreground: #1a120b;
+  --secondary: #2d1f14;
+  --secondary-foreground: #fdfcfb;
+  --muted: #2d1f14;
+  --muted-foreground: #a6927d;
+  --accent: #3a2a1d;
+  --accent-foreground: #fdfcfb;
+  --destructive: #c0421b;
+  --destructive-foreground: #fdfcfb;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: #e8a14a;
 }
 
 @layer base {
@@ -162,4 +162,13 @@
 }
 .pdf-mode .bg-festive {
   background-image: linear-gradient(135deg, #c0421b, #e8a14a) !important;
+}
+/* Hide number input spinners (needles) */
+.no-spinner::-webkit-inner-spin-button,
+.no-spinner::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
 }
