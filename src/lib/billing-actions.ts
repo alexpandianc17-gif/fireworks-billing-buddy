@@ -69,9 +69,8 @@ export const getBillingData = createServerFn({ method: "GET" }).handler(async ()
 
 
 export const saveInvoiceAction = createServerFn({ method: "POST" })
-  .handler(async (ctx: any) => {
-    // If ctx.data exists (validated), use it. Otherwise, ctx might BE the data.
-    const i = ctx?.data || ctx;
+  .handler(async (args: any) => {
+    const i = args?.data || args;
     const row = [
       i.invoiceNo,
       i.date,
@@ -95,16 +94,16 @@ export const saveInvoiceAction = createServerFn({ method: "POST" })
   });
 
 export const saveSettingsAction = createServerFn({ method: "POST" })
-  .handler(async (ctx: any) => {
-    const c = ctx?.data || ctx;
+  .handler(async (args: any) => {
+    const c = args?.data || args;
     const row = [c.pin, c.cgstRate, c.sgstRate, c.igstRate, c.defaultDiscount, c.mahamaiRate];
     await updateSheetData("Settings!A2:F2", [row]);
     return { success: true };
   });
 
 export const saveCompanyAction = createServerFn({ method: "POST" })
-  .handler(async (ctx: any) => {
-    const data = ctx?.data || ctx;
+  .handler(async (args: any) => {
+    const data = args?.data || args;
     const { company, rowIndex } = data;
     const row = [
       company.name, company.address, company.gstin, company.licNo,
@@ -115,8 +114,8 @@ export const saveCompanyAction = createServerFn({ method: "POST" })
   });
 
 export const addCompanyAction = createServerFn({ method: "POST" })
-  .handler(async (ctx: any) => {
-    const company = ctx?.data || ctx;
+  .handler(async (args: any) => {
+    const company = args?.data || args;
     const row = [
       company.name, company.address, company.gstin, company.licNo,
       company.bankName, company.accountNo, company.ifsc, company.branch
@@ -149,9 +148,8 @@ export const getInvoicesAction = createServerFn({ method: "GET" }).handler(async
 });
 
 export const recordPaymentAction = createServerFn({ method: "POST" })
-  .handler(async (ctx: any) => {
-    // Determine if data is in ctx.data or ctx itself
-    const data = ctx?.data || ctx;
+  .handler(async (args: any) => {
+    const data = args?.data || args;
     const payment = data?.payment;
     const rowIndex = data?.invoiceRowIndex;
     const status = data?.newStatus;
@@ -159,10 +157,9 @@ export const recordPaymentAction = createServerFn({ method: "POST" })
     const due = data?.newBalanceDue;
 
     if (!payment?.Payment_ID || !rowIndex) {
-      // Last resort: if ctx has a request, it might not be parsed
       return { 
         success: false, 
-        error: `Missing data. Keys in ctx: ${ctx ? Object.keys(ctx).join(", ") : "null"}` 
+        error: `Missing data. paymentID: ${payment?.Payment_ID}. rowIndex: ${rowIndex}` 
       };
     }
 
@@ -183,8 +180,8 @@ export const recordPaymentAction = createServerFn({ method: "POST" })
   });
 
 export const addCustomerAction = createServerFn({ method: "POST" })
-  .handler(async (ctx: any) => {
-    const c = ctx?.data || ctx;
+  .handler(async (args: any) => {
+    const c = args?.data || args;
     const row = [c.name, c.address1, c.address2 || "", c.address3 || "", c.gstin || "", c.pan || ""];
     await appendSheetData("Customers!A2:F", [row]);
     return { success: true };

@@ -34,6 +34,22 @@ const STATUS_CONFIG = {
 };
 
 function detectCompany(inv: Invoice): { label: string; color: string } {
+  try {
+    const data = JSON.parse(inv.itemsJson || "[]");
+    const items = Array.isArray(data) ? data : (data.items || []);
+    const firstCompany = items[0]?.company?.toLowerCase();
+    
+    if (firstCompany) {
+      if (firstCompany.includes("thangakavi") || firstCompany.includes("tanka") || firstCompany.includes("tang")) {
+        return { label: "Sri Thangakaviya", color: "bg-purple-100 text-purple-700" };
+      }
+      if (firstCompany.includes("jayakavi")) {
+        return { label: "Jayakavi", color: "bg-orange-100 text-orange-700" };
+      }
+    }
+  } catch (e) { /* ignore */ }
+
+  // Fallback to invoice number heuristic (legacy/backwards compatibility)
   const no = inv.invoiceNo?.toUpperCase() || "";
   if (no.startsWith("T") || no.startsWith("TK") || no.includes("TANKA") || no.includes("TANG")) {
     return { label: "Sri Thangakaviya", color: "bg-purple-100 text-purple-700" };
@@ -451,8 +467,23 @@ function InvoicesPage() {
             {(() => {
               const company = detectCompany(printingInv);
               const profile = companies.find(c => c.name.toLowerCase().includes(company.label.toLowerCase())) || companies[0];
-              const rows = JSON.parse(printingInv.itemsJson || "[]");
-              const transport: TransportHeader = { lrNo: "—", lrDate: "—", orderNo: "—", orderDate: "—", despatchedThrough: "—", destination: "—", vehicleNo: "—", termsOfDelivery: "—" };
+              const parsedData = JSON.parse(printingInv.itemsJson || "[]");
+              const isBundled = !Array.isArray(parsedData) && parsedData.isBundled;
+              const rows = Array.isArray(parsedData) ? parsedData : (parsedData.items || []);
+              
+              // Extract transport with deep fallback
+              const transport: TransportHeader = {
+                lrNo: parsedData.transport?.lrNo || "—",
+                lrDate: parsedData.transport?.lrDate || "—",
+                orderNo: parsedData.transport?.orderNo || "—",
+                orderDate: parsedData.transport?.orderDate || "—",
+                despatchedThrough: parsedData.transport?.despatchedThrough || "—",
+                destination: parsedData.transport?.destination || "—",
+                vehicleNo: parsedData.transport?.vehicleNo || "—",
+                termsOfDelivery: parsedData.transport?.termsOfDelivery || "—",
+              };
+
+              const savedHeader = Array.isArray(parsedData) ? null : parsedData.headerInfo;
               const taxable = printingInv.subTotal - printingInv.discount;
               const isInter = printingInv.customerGstin && !printingInv.customerGstin.startsWith("33");
               const cgst = isInter ? 0 : config.cgstRate;
@@ -469,7 +500,7 @@ function InvoicesPage() {
                     invoiceNo: printingInv.invoiceNo, 
                     date: printingInv.date, 
                     customerName: printingInv.customerName, 
-                    customerAddress: "—", 
+                    customerAddress: savedHeader?.customerAddress || "—", 
                     customerGstin: printingInv.customerGstin || "—",
                     transport: transport.despatchedThrough || "—"
                   }} 
@@ -499,7 +530,7 @@ function InvoicesPage() {
                     invoiceNo: printingInv.invoiceNo, 
                     date: printingInv.date, 
                     customerName: printingInv.customerName, 
-                    customerAddress: "—", 
+                    customerAddress: savedHeader?.customerAddress || "—", 
                     customerGstin: printingInv.customerGstin || "—",
                     transport: transport.despatchedThrough || "—"
                   }} 

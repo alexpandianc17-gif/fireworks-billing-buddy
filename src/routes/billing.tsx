@@ -25,18 +25,20 @@ interface Row {
   unit: string;
   packing: string;
   rate: number;
+  company: string;
 }
 
 const blankRow = (): Row => ({
-  id: Math.random().toString(36).slice(2),
+  id: Math.random().toString(36).slice(2, 9),
   cases: 0,
   code: "",
   name: "",
-  hsn: "3604",
+  hsn: "",
   qty: 0,
-  unit: "nos",
+  unit: "",
   packing: "",
   rate: 0,
+  company: "",
 });
 
 function BillingPage() {
@@ -176,9 +178,25 @@ function BillingPage() {
   };
 
   const handleSaveInvoice = async () => {
-    const validRows = rows.filter(r => r.name && r.qty > 0);
+    const validRows = rows.filter(r => r.name && r.qty > 0).map(r => ({
+      ...r,
+      company: selectedCompany
+    }));
     const received = saveStatus === "Paid" ? grandTotal : saveStatus === "Partial" ? partialAmount : 0;
     const balance = grandTotal - received;
+
+    // Create a robust data bundle including EVERYTHING
+    const bundle = {
+      isBundled: true,
+      items: validRows,
+      transport: transport,
+      headerInfo: header,
+      meta: {
+        timestamp: new Date().toISOString(),
+        version: "2.1"
+      }
+    };
+
     const invoiceData: Invoice = {
       invoiceNo: header.invoiceNo,
       date: header.date,
@@ -192,7 +210,7 @@ function BillingPage() {
       insurance,
       taxAmount,
       netTotal: grandTotal,
-      itemsJson: JSON.stringify(validRows),
+      itemsJson: JSON.stringify(bundle),
       paymentStatus: saveStatus,
       amountReceived: received,
       balanceDue: balance,
@@ -495,6 +513,7 @@ function BillingPage() {
                             unit: p.unit,
                             packing: p.packing,
                             rate: selectedCompany === "Jayakavi" ? p.rateA : p.rateB,
+                            company: p.company,
                           });
                           setFocusRef({ id: r.id, field: "qty" });
                         }}
