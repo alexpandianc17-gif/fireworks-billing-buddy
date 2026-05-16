@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { fetchSheetData, appendSheetData, updateSheetData } from "./google-sheets";
+import { fetchSheetData, appendSheetData, updateSheetData, deleteSheetRow } from "./google-sheets";
 import { Config, Product, Customer, Invoice, Payment, CompanyProfile } from "@/types/billing";
 
 async function safeFetch(range: string) {
@@ -121,6 +121,14 @@ export const addCompanyAction = createServerFn({ method: "POST" })
       company.bankName, company.accountNo, company.ifsc, company.branch
     ];
     await appendSheetData("Companies!A2:H", [row]);
+    return { success: true };
+  });
+
+export const deleteCompanyAction = createServerFn({ method: "POST" })
+  .handler(async (args: any) => {
+    const data = args?.data || args;
+    const { rowIndex } = data;
+    await deleteSheetRow("Companies", rowIndex + 1); // +1 because start index 1 is Row 2
     return { success: true };
   });
 

@@ -190,22 +190,22 @@ export function ThangakaviyaTemplate({
         </thead>
         <tbody>
           {validRows.map((r, i) => (
-            <tr key={r.id} style={{ height: "20px" }}>
-              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px" }}>{i + 1}</td>
-              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px" }}>{r.cases || ""}</td>
-              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", fontWeight: "bold", fontSize: "9px" }}>{r.name}</td>
-              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", fontSize: "9px" }}>{r.packing}</td>
-              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px" }}>
+            <tr key={r.id} style={{ height: "24px" }}>
+              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{i + 1}</td>
+              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{r.cases || ""}</td>
+              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", fontWeight: "bold", fontSize: "9px", verticalAlign: "middle" }}>{r.name}</td>
+              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", fontSize: "9px", verticalAlign: "middle" }}>{r.packing}</td>
+              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>
                 {r.qty} {r.unit}
               </td>
-              <td style={{ borderLeft: b, borderBottom: b, padding: "3px" }}>
+              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", verticalAlign: "middle" }}>
                 <div style={{ display: "flex", fontSize: "9px" }}>
                   <span style={{ flex: 1, textAlign: "right", paddingRight: "2px" }}>{Math.floor(r.rate)}</span>
                   <span style={{ width: "20px", borderLeft: "1px solid #ccc", textAlign: "center" }}>{(r.rate % 1).toFixed(2).split(".")[1]}</span>
                 </div>
               </td>
-              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px" }}>{r.unit}</td>
-              <td style={{ borderLeft: b, borderRight: b, borderBottom: b, padding: "3px" }}>
+              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{r.unit}</td>
+              <td style={{ borderLeft: b, borderRight: b, borderBottom: b, padding: "3px", verticalAlign: "middle" }}>
                 <div style={{ display: "flex", fontSize: "9px", fontWeight: "bold" }}>
                   <span style={{ flex: 1, textAlign: "right", paddingRight: "2px" }}>{Math.floor(r.qty * r.rate)}</span>
                   <span style={{ width: "25px", borderLeft: "1px solid #ccc", textAlign: "center" }}>{((r.qty * r.rate) % 1).toFixed(2).split(".")[1]}</span>

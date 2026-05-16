@@ -9,7 +9,7 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
-  const { authed, config, saveConfig, companies, saveCompany, addCompany, products, addProduct, deleteProduct, loading } = useBilling();
+  const { authed, config, saveConfig, companies, saveCompany, addCompany, deleteCompany, products, addProduct, deleteProduct, loading } = useBilling();
   const [form, setForm] = useState(config);
   const [saved, setSaved] = useState(false);
 
@@ -204,6 +204,7 @@ function SettingsPage() {
               key={company.name} 
               company={company} 
               onSave={(updated) => saveCompany(updated, index)} 
+              onDelete={() => deleteCompany(index)}
               loading={loading}
             />
           ))}
@@ -259,7 +260,7 @@ function SettingsPage() {
   );
 }
 
-function CompanyCard({ company, onSave, loading }: { company: CompanyProfile, onSave: (c: CompanyProfile) => void, loading: boolean }) {
+function CompanyCard({ company, onSave, onDelete, loading }: { company: CompanyProfile, onSave: (c: CompanyProfile) => void, onDelete: () => void, loading: boolean }) {
   const [data, setData] = useState(company);
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -272,6 +273,12 @@ function CompanyCard({ company, onSave, loading }: { company: CompanyProfile, on
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handleDelete = async () => {
+    if (window.confirm(`Are you sure you want to delete ${company.name}? This will remove it from the system.`)) {
+      await onDelete();
+    }
+  };
+
   return (
     <div className="bg-white border-2 border-[#d4bc8d]/20 rounded-3xl p-8 shadow-sm hover:shadow-md transition-shadow">
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -280,6 +287,15 @@ function CompanyCard({ company, onSave, loading }: { company: CompanyProfile, on
           <div className="flex items-center gap-3">
             {saved && <span className="text-green-500 font-bold text-sm">Saved!</span>}
             {dirty && <button type="submit" disabled={loading} className="bg-[#c0421b] text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-md">Save Changes</button>}
+            <button 
+              type="button" 
+              onClick={handleDelete}
+              disabled={loading}
+              className="p-2 text-red-400 hover:text-red-600 transition-colors"
+              title="Delete Company"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
           </div>
         </div>
         

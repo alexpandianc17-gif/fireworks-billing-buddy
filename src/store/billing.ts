@@ -4,7 +4,7 @@ import { type Config, type Product, type Customer, type Invoice, type CompanyPro
 export type { Config, Product, Customer, Invoice, CompanyProfile };
 export type Company = string; // Now dynamic
 
-import { getBillingData, saveSettingsAction, saveCompanyAction, addCompanyAction } from "@/lib/billing-actions";
+import { getBillingData, saveSettingsAction, saveCompanyAction, addCompanyAction, deleteCompanyAction } from "@/lib/billing-actions";
 
 interface BillingState {
   authed: boolean;
@@ -26,6 +26,7 @@ interface BillingState {
   syncData: () => Promise<void>;
   addProduct: (p: { company: Company; name: string; unit: string }) => { ok: boolean; error?: string };
   deleteProduct: (id: string) => Promise<void>;
+  deleteCompany: (index: number) => Promise<void>;
 }
 
 export const useBilling = create<BillingState>()(
@@ -115,6 +116,16 @@ export const useBilling = create<BillingState>()(
         // The user hasn't asked for product persistence in Sheets yet.
         set({ products: [...products, newP] });
         return { ok: true };
+      },
+      deleteCompany: async (index) => {
+        set({ loading: true });
+        try {
+          await (deleteCompanyAction as any)({ data: { rowIndex: index } });
+          const companies = get().companies.filter((_, i) => i !== index);
+          set({ companies });
+        } finally {
+          set({ loading: false });
+        }
       },
       deleteProduct: async (id) => {
         set({ products: get().products.filter((p) => p.code !== id) });

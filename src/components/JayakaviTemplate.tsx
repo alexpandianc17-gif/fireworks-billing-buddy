@@ -182,15 +182,15 @@ export function JayakaviTemplate({
         </thead>
         <tbody>
           {validRows.map((r, i) => (
-            <tr key={r.id}>
-              <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px" }}>{i + 1}</td>
-              <td style={{ border: "1px solid black", padding: "3px", fontSize: "9px" }}>{r.code}</td>
-              <td style={{ border: "1px solid black", padding: "3px", fontWeight: "bold", fontSize: "9px" }}>{r.name}</td>
-              <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px" }}>{r.hsn}</td>
-              <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px" }}>{r.qty} {r.unit}</td>
-              <td style={{ border: "1px solid black", padding: "3px", textAlign: "right", fontSize: "9px" }}>{fmt(r.rate)}</td>
-              <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px" }}>{r.unit}</td>
-              <td style={{ border: "1px solid black", padding: "3px", textAlign: "right", fontWeight: "bold", fontSize: "9px" }}>{fmt(r.qty * r.rate)}</td>
+            <tr key={r.id} style={{ height: "24px" }}>
+              <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{i + 1}</td>
+              <td style={{ border: "1px solid black", padding: "3px", fontSize: "9px", verticalAlign: "middle" }}>{r.code}</td>
+              <td style={{ border: "1px solid black", padding: "3px", fontWeight: "bold", fontSize: "9px", verticalAlign: "middle" }}>{r.name}</td>
+              <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{r.hsn}</td>
+              <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{r.qty} {r.unit}</td>
+              <td style={{ border: "1px solid black", padding: "3px", textAlign: "right", fontSize: "9px", verticalAlign: "middle" }}>{fmt(r.rate)}</td>
+              <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{r.unit}</td>
+              <td style={{ border: "1px solid black", padding: "3px", textAlign: "right", fontWeight: "bold", fontSize: "9px", verticalAlign: "middle" }}>{fmt(r.qty * r.rate)}</td>
             </tr>
           ))}
           {/* Tax row */}
