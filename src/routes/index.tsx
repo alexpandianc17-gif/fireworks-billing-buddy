@@ -21,7 +21,6 @@ function PinPage() {
     e.preventDefault();
     if (pin === config.pin) {
       setIsUnlocking(true);
-      // Sync in background
       useBilling.getState().syncData();
       setTimeout(() => {
         setAuthed(true);
@@ -35,7 +34,8 @@ function PinPage() {
 
   return (
     <div className="h-[100dvh] w-full relative overflow-hidden bg-[#fdf6e3]">
-      {/* Background Layer */}
+
+      {/* Background — always fills 100% of the viewport */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -51,34 +51,63 @@ function PinPage() {
         <div className="absolute inset-0 bg-white/10" />
       </motion.div>
 
-      {/* Main Content Wrapper */}
-      <div className="absolute inset-0 z-10 flex flex-col items-center justify-end pb-12 perspective-1000 p-4">
-        <AnimatePresence>
-          {!isUnlocking && (
-            <motion.div
-              initial={{ y: 0, opacity: 1 }}
-              exit={{
-                y: 500,
-                rotateX: -20,
-                opacity: 0,
-                transition: { duration: 0.8, ease: "backIn" },
-              }}
-              className="w-full max-w-md flex flex-col items-center"
+      {/*
+        KEY FIX: Card is absolutely positioned using viewport-% coordinates,
+        the same coordinate space the background image lives in.
+        → Browser zoom scales both the bg and the card identically.
+        → No flex container, no padding-based positioning that drifts on zoom.
+
+        bottom: 6%    — lower third, background branding visible above
+        left: 50% + translateX(-50%)  — always horizontally centered
+        width: 28vw   — proportional to viewport, matches bg image scaling
+        clamp() on font/padding — gracefully handles very small or large viewports
+      */}
+      <AnimatePresence>
+        {!isUnlocking && (
+          <motion.div
+            initial={{ x: "-50%", opacity: 1 }}
+            animate={{ x: "-50%" }}
+            exit={{
+              x: "-50%",
+              y: 500,
+              rotateX: -20,
+              opacity: 0,
+              transition: { duration: 0.8, ease: "backIn" },
+            }}
+            style={{
+              position: "absolute",
+              bottom: "6%",
+              left: "50%",
+              width: "28vw",
+              minWidth: "300px",
+              maxWidth: "460px",
+              zIndex: 10,
+            }}
+          >
+            <motion.form
+              onSubmit={submit}
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              whileHover={{ scale: 1.02, y: -12 }}
+              className="w-full bg-white/70 backdrop-blur-xl border border-white/50 shadow-2xl relative overflow-hidden"
+              style={{ borderRadius: "2rem", padding: "2rem" }}
             >
-              {/* Login Card */}
-              <motion.form
-                onSubmit={submit}
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                whileHover={{ scale: 1.02, y: -12 }}
-                className="w-full bg-white/70 backdrop-blur-xl border border-white/50 rounded-[2.5rem] p-8 shadow-2xl space-y-6 relative overflow-hidden"
-              >
-                <div className="absolute top-0 left-0 w-full h-1 bg-festive" />
-                
-                <div className="space-y-3">
-                  <label className="text-[10px] font-black flex items-center gap-2 text-[#8b6d4d] uppercase tracking-widest justify-center">
-                    <Lock className="w-3 h-3" /> Secure Access Required
-                  </label>
+              {/* Festive top accent bar */}
+              <div className="absolute top-0 left-0 w-full bg-festive" style={{ height: "4px" }} />
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+
+                {/* Label */}
+                <label
+                  className="flex items-center justify-center gap-2 text-[#8b6d4d] uppercase tracking-widest font-black"
+                  style={{ fontSize: "clamp(9px, 0.7vw, 12px)" }}
+                >
+                  <Lock style={{ width: "clamp(10px, 0.8vw, 14px)", height: "clamp(10px, 0.8vw, 14px)" }} />
+                  Secure Access Required
+                </label>
+
+                {/* PIN input */}
+                <div>
                   <input
                     type="password"
                     inputMode="numeric"
@@ -89,34 +118,51 @@ function PinPage() {
                       setPin(e.target.value.replace(/\D/g, ""));
                       setErr("");
                     }}
-                    className="w-full text-center text-3xl tracking-[0.5em] font-mono py-5 rounded-2xl border-2 border-[#d4bc8d]/30 bg-white/50 focus:outline-none focus:border-[#c0421b] focus:ring-4 focus:ring-[#c0421b]/10 transition-all shadow-inner"
+                    className="w-full text-center font-mono tracking-[0.5em] border-2 border-[#d4bc8d]/30 bg-white/50 focus:outline-none focus:border-[#c0421b] focus:ring-4 focus:ring-[#c0421b]/10 transition-all shadow-inner"
+                    style={{
+                      fontSize: "clamp(20px, 2vw, 32px)",
+                      padding: "clamp(12px, 1.2vw, 20px) 0",
+                      borderRadius: "1rem",
+                    }}
                     placeholder="••••••"
                   />
                   {err && (
-                    <p className="text-[#c0421b] text-[10px] font-bold text-center uppercase animate-bounce">
+                    <p
+                      className="text-[#c0421b] font-bold text-center uppercase animate-bounce"
+                      style={{ fontSize: "clamp(9px, 0.6vw, 12px)", marginTop: "6px" }}
+                    >
                       {err}
                     </p>
                   )}
                 </div>
 
+                {/* Unlock button */}
                 <button
                   type="submit"
                   disabled={pin.length !== 6 || isUnlocking}
-                  className="w-full bg-festive text-white font-bold py-4 rounded-2xl shadow-lg disabled:opacity-50 hover:bg-[#a03616] transition-all text-base uppercase tracking-widest"
+                  className="w-full bg-festive text-white font-bold shadow-lg disabled:opacity-50 hover:bg-[#a03616] transition-all uppercase tracking-widest"
+                  style={{
+                    padding: "clamp(10px, 1vw, 16px) 0",
+                    borderRadius: "1rem",
+                    fontSize: "clamp(11px, 0.8vw, 14px)",
+                  }}
                 >
                   Unlock System
                 </button>
 
-                <div className="text-center pt-2">
-                  <p className="text-[9px] text-[#8b6d4d]/60 font-medium tracking-tighter">
-                    Authorized Personnel Only • PIN: 123456
-                  </p>
-                </div>
-              </motion.form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                {/* Footer note */}
+                <p
+                  className="text-center text-[#8b6d4d]/60 font-medium tracking-tighter"
+                  style={{ fontSize: "clamp(8px, 0.55vw, 11px)" }}
+                >
+                  Authorized Personnel Only • PIN: 123456
+                </p>
+
+              </div>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

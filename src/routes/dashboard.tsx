@@ -72,7 +72,7 @@ function Dashboard() {
         <main className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto px-6 w-full py-4">
           <motion.div className="text-center mb-8" variants={itemVariants}>
             <h1 className="text-5xl font-extrabold tracking-tight text-[#4a3728] mb-2">
-              Kavya <span className="text-[#c0421b]">Dashboard</span>
+              Kaviya <span className="text-[#c0421b]">Dashboard</span>
             </h1>
             <p className="text-base text-[#8b6d4d] font-bold uppercase tracking-[0.2em]">
               Select Operation Module
