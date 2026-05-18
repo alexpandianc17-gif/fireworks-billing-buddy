@@ -14,7 +14,7 @@ export function TopNav() {
           <div className="w-9 h-9 rounded-lg bg-festive grid place-items-center shadow-festive">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span>Kavya Billings</span>
+          <span>Kaviya Billings</span>
         </Link>
         <nav className="flex items-center gap-2">
           <Link
