@@ -7,7 +7,8 @@ import { amountInWords } from "@/lib/numberToWords";
 
 interface Row {
   id: string;
-  cases: number;
+  caseText: string;
+  caseQty: number;
   code: string;
   name: string;
   hsn: string;
@@ -33,7 +34,6 @@ interface Props {
   discountAmt: number;
   discount: number;
   handling: number;
-  mahamai: number;
   insurance: number;
   freight: number;
   taxType: "Intra-state" | "Inter-state";
@@ -57,14 +57,13 @@ const b = "1px solid black";
 
 export function ThangakaviyaTemplate({
   profile, header, transport, rows, subtotal, discountAmt, discount,
-  handling, mahamai, insurance, freight,
+  handling, insurance, freight,
   taxType, cgst, sgst, igst, cgstAmt, sgstAmt, igstAmt,
   taxAmount, taxable, grandTotal,
 }: Props) {
   const validRows = rows.filter(r => r.name && r.qty > 0);
   const roundOff = Math.round(grandTotal) - grandTotal;
   const finalTotal = Math.round(grandTotal);
-  const totalCases = validRows.reduce((s, r) => s + r.cases, 0);
 
   return (
     <div
@@ -123,13 +122,11 @@ export function ThangakaviyaTemplate({
                 <tbody>
                   <tr>
                     <td style={{ border: b, padding: "3px", fontWeight: "bold", fontSize: "9px", textAlign: "center" }}>L.R.No.</td>
-                    <td style={{ border: b, padding: "3px", fontWeight: "bold", fontSize: "9px", textAlign: "center" }}>DATE</td>
-                    <td style={{ border: b, padding: "3px", fontWeight: "bold", fontSize: "9px", textAlign: "center" }}>TOTAL QTY. CASES</td>
+                    <td colSpan={2} style={{ border: b, padding: "3px", fontWeight: "bold", fontSize: "9px", textAlign: "center" }}>DATE</td>
                   </tr>
                   <tr style={{ height: "18px" }}>
                     <td style={{ border: b, padding: "3px", fontSize: "9px" }}>{transport.lrNo}</td>
-                    <td style={{ border: b, padding: "3px", fontSize: "9px" }}>{transport.lrDate}</td>
-                    <td style={{ border: b, padding: "3px", fontSize: "9px", textAlign: "center" }}>{totalCases || ""}</td>
+                    <td colSpan={2} style={{ border: b, padding: "3px", fontSize: "9px" }}>{transport.lrDate}</td>
                   </tr>
                   <tr>
                     <td style={{ border: b, padding: "3px", fontWeight: "bold", fontSize: "9px", textAlign: "center" }}>ORDER NUMBER</td>
@@ -192,7 +189,10 @@ export function ThangakaviyaTemplate({
           {validRows.map((r, i) => (
             <tr key={r.id} style={{ height: "24px" }}>
               <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{i + 1}</td>
-              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{r.cases || ""}</td>
+              <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>
+                <div style={{ fontWeight: "bold" }}>{r.caseText}</div>
+                <div style={{ fontSize: "8px", color: "#444" }}>{r.caseQty > 0 ? `(${r.caseQty})` : ""}</div>
+              </td>
               <td style={{ borderLeft: b, borderBottom: b, padding: "3px", fontWeight: "bold", fontSize: "9px", verticalAlign: "middle" }}>{r.name}</td>
               <td style={{ borderLeft: b, borderBottom: b, padding: "3px", fontSize: "9px", verticalAlign: "middle" }}>{r.packing}</td>
               <td style={{ borderLeft: b, borderBottom: b, padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>
@@ -233,8 +233,7 @@ export function ThangakaviyaTemplate({
             <td style={{ border: b, padding: "3px", fontSize: "9px", fontWeight: "bold" }}>Discount</td>
             <td style={{ border: b, padding: "3px", fontSize: "9px", fontWeight: "bold" }}>Sub Total</td>
             <td style={{ border: b, padding: "3px", fontSize: "9px", fontWeight: "bold" }}>Handling &amp; Forwarding</td>
-            <td style={{ border: b, padding: "3px", fontSize: "9px", fontWeight: "bold" }}>Mahamai</td>
-            <td style={{ border: b, padding: "3px", fontSize: "9px", fontWeight: "bold" }}>Insurance</td>
+            <td colSpan={2} style={{ border: b, padding: "3px", fontSize: "9px", fontWeight: "bold" }}>Insurance</td>
           </tr>
           <tr style={{ backgroundColor: "#fff" }}>
             <td style={{ border: b, padding: "3px", fontSize: "9px" }}>Rs. {fmt(subtotal)}</td>
@@ -242,8 +241,7 @@ export function ThangakaviyaTemplate({
             <td style={{ border: b, padding: "3px", fontSize: "9px" }}>Rs. {discount > 0 ? fmt(discountAmt) : ""}</td>
             <td style={{ border: b, padding: "3px", fontSize: "9px" }}>Rs. {fmt(subtotal - discountAmt)}</td>
             <td style={{ border: b, padding: "3px", fontSize: "9px" }}>Rs. {handling > 0 ? fmt(handling) : ""}</td>
-            <td style={{ border: b, padding: "3px", fontSize: "9px" }}>Rs. {mahamai > 0 ? fmt(mahamai) : ""}</td>
-            <td style={{ border: b, padding: "3px", fontSize: "9px" }}>Rs. {insurance > 0 ? fmt(insurance) : ""}</td>
+            <td colSpan={2} style={{ border: b, padding: "3px", fontSize: "9px" }}>Rs. {insurance > 0 ? fmt(insurance) : ""}</td>
           </tr>
           <tr>
             <td style={{ border: b, padding: "3px", fontSize: "9px", fontWeight: "bold", backgroundColor: "#e0e0e0" }}>Taxable Value</td>

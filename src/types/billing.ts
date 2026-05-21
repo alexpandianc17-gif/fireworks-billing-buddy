@@ -35,7 +35,6 @@ export interface Config {
   sgstRate: number;
   igstRate: number;
   defaultDiscount: number;
-  mahamaiRate: number;
 }
 
 /** Transport/despatch fields on each invoice */
@@ -61,7 +60,6 @@ export interface Invoice {
   discount: number;
   packingCharges: number;
   freight: number;
-  mahamai: number;
   insurance: number;
   taxAmount: number;
   netTotal: number;

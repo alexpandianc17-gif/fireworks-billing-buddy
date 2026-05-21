@@ -7,7 +7,8 @@ import { amountInWords } from "@/lib/numberToWords";
 
 interface Row {
   id: string;
-  cases: number;
+  caseText: string;
+  caseQty: number;
   code: string;
   name: string;
   hsn: string;
@@ -32,7 +33,6 @@ interface Props {
   subtotal: number;
   discountAmt: number;
   handling: number;
-  mahamai: number;
   insurance: number;
   freight: number;
   taxType: "Intra-state" | "Inter-state";
@@ -58,7 +58,7 @@ const cellRight = cell + " text-right";
 
 export function JayakaviTemplate({
   profile, header, transport, rows, subtotal, discountAmt,
-  handling, mahamai, insurance, freight,
+  handling, insurance, freight,
   taxType, cgst, sgst, igst, cgstAmt, sgstAmt, igstAmt,
   taxAmount, taxable, grandTotal,
 }: Props) {
@@ -184,7 +184,10 @@ export function JayakaviTemplate({
           {validRows.map((r, i) => (
             <tr key={r.id} style={{ height: "24px" }}>
               <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{i + 1}</td>
-              <td style={{ border: "1px solid black", padding: "3px", fontSize: "9px", verticalAlign: "middle" }}>{r.code}</td>
+              <td style={{ border: "1px solid black", padding: "3px", fontSize: "9px", verticalAlign: "middle" }}>
+                <div style={{ fontWeight: "bold" }}>{r.caseText}</div>
+                <div style={{ fontSize: "8px", color: "#444" }}>{r.caseQty > 0 ? `(${r.caseQty})` : ""}</div>
+              </td>
               <td style={{ border: "1px solid black", padding: "3px", fontWeight: "bold", fontSize: "9px", verticalAlign: "middle" }}>{r.name}</td>
               <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{r.hsn}</td>
               <td style={{ border: "1px solid black", padding: "3px", textAlign: "center", fontSize: "9px", verticalAlign: "middle" }}>{r.qty} {r.unit}</td>

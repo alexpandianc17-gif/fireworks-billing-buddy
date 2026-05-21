@@ -180,15 +180,6 @@ function SettingsPage() {
                 className="w-full border-2 border-[#d4bc8d]/30 rounded-xl px-4 py-2 focus:border-[#c0421b] outline-none no-spinner"
               />
             </Field>
-            <Field label="Mahamai Rate (%)">
-              <input
-                type="number"
-                step="0.01"
-                value={form.mahamaiRate || 0}
-                onChange={(e) => setForm({ ...form, mahamaiRate: +e.target.value })}
-                className="w-full border-2 border-[#d4bc8d]/30 rounded-xl px-4 py-2 focus:border-[#c0421b] outline-none no-spinner"
-              />
-            </Field>
             <div className="md:col-span-full flex justify-end items-center gap-4 mt-2">
               {saved && <span className="text-green-600 font-bold flex items-center gap-1 animate-bounce"><Check className="w-5 h-5" /> Saved!</span>}
               <button type="submit" disabled={loading} className="bg-[#4a3728] text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-[#36281d] transition-all">Update App Settings</button>

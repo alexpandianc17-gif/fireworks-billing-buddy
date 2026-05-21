@@ -6,10 +6,11 @@ interface Props {
   products: Product[];
   value: string;
   onSelect: (p: Product) => void;
+  onNameChange?: (val: string) => void;
   autoFocus?: boolean;
 }
 
-export function ProductCombobox({ products, value, onSelect, autoFocus }: Props) {
+export function ProductCombobox({ products, value, onSelect, onNameChange, autoFocus }: Props) {
   const [q, setQ] = useState(value);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,6 +47,7 @@ export function ProductCombobox({ products, value, onSelect, autoFocus }: Props)
           onFocus={() => setOpen(true)}
           onChange={(e) => {
             setQ(e.target.value);
+            onNameChange?.(e.target.value);
             setOpen(true);
           }}
           onKeyDown={(e) => {

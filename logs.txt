@@ -1,0 +1,103 @@
+20:48:04.791 Running build in Washington, D.C., USA (East) – iad1
+20:48:04.792 Build machine configuration: 2 cores, 8 GB
+20:48:04.803 Cloning github.com/alexpandianc17-gif/fireworks-billing-buddy (Branch: main, Commit: c001e28)
+20:48:04.803 Skipping build cache, deployment was triggered without cache.
+20:48:05.911 Cloning completed: 1.108s
+20:48:06.380 Running "vercel build"
+20:48:06.398 Vercel CLI 54.2.0
+20:48:07.084 Installing dependencies...
+20:48:09.554 npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+20:48:12.794 npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+20:48:23.241 
+20:48:23.242 added 581 packages in 16s
+20:48:23.243 
+20:48:23.243 137 packages are looking for funding
+20:48:23.244   run `npm fund` for details
+20:48:23.245 npm notice
+20:48:23.245 npm notice New minor version of npm available! 11.12.1 -> 11.14.1
+20:48:23.245 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.14.1
+20:48:23.245 npm notice To update run: npm install -g npm@11.14.1
+20:48:23.245 npm notice
+20:48:28.033 Detected `vite build` with a server environment but no `nitro` dependency. Replacing the build command with `nitro build --builder vite` for SSR support.
+20:48:28.390 [success] [nitro] Generated public .vercel/output/static
+20:48:30.546 [info] [nitro:vercel] Using `nodejs24.x` runtime.
+20:48:30.546 [info] [nitro:vercel] Using `web` entry format.
+20:48:30.806 vite v7.3.3 building client environment for production...
+20:48:30.856 transforming...
+20:48:38.032 ✓ 2567 modules transformed.
+20:48:38.436 rendering chunks...
+20:48:39.141 computing gzip size...
+20:48:39.264 .vercel/output/static/.assetsignore                              0.02 kB
+20:48:39.265 .vercel/output/static/assets/styles-CNortBeq.css                92.60 kB │ gzip:  15.49 kB
+20:48:39.266 .vercel/output/static/assets/x-1r0bjQqo.js                       0.16 kB │ gzip:   0.15 kB
+20:48:39.268 .vercel/output/static/assets/trash-2-C6xkuGCD.js                 0.44 kB │ gzip:   0.27 kB
+20:48:39.269 .vercel/output/static/assets/TopNav-CBc3pC67.js                  3.53 kB │ gzip:   1.40 kB
+20:48:39.269 .vercel/output/static/assets/dashboard-B9vpJmFP.js               4.04 kB │ gzip:   1.67 kB
+20:48:39.269 .vercel/output/static/assets/index-D1IA6aiy.js                   7.08 kB │ gzip:   3.29 kB
+20:48:39.270 .vercel/output/static/assets/billing-BjvSUKqL.js                10.64 kB │ gzip:   4.73 kB
+20:48:39.270 .vercel/output/static/assets/settings-B3ZYBqzp.js               11.97 kB │ gzip:   2.91 kB
+20:48:39.270 .vercel/output/static/assets/invoices-D18tlPE2.js               15.70 kB │ gzip:   4.89 kB
+20:48:39.270 .vercel/output/static/assets/purify.es-DfZ_cBTv.js              24.11 kB │ gzip:   9.06 kB
+20:48:39.270 .vercel/output/static/assets/billing-CcGqxRxv.js                27.34 kB │ gzip:   6.98 kB
+20:48:39.270 .vercel/output/static/assets/proxy-DKqx8oTG.js                 122.00 kB │ gzip:  39.82 kB
+20:48:39.271 .vercel/output/static/assets/index.es-FsJrQ4Gy.js              158.87 kB │ gzip:  53.07 kB
+20:48:39.271 .vercel/output/static/assets/index-CTC_zte0.js                 350.49 kB │ gzip: 111.21 kB
+20:48:39.271 .vercel/output/static/assets/ThangakaviyaTemplate-CTSRLnQQ.js  617.86 kB │ gzip: 178.46 kB
+20:48:39.271 ✓ built in 8.43s
+20:48:39.272 vite v7.3.3 building ssr environment for production...
+20:48:39.272 
+20:48:39.272 (!) Some chunks are larger than 500 kB after minification. Consider:
+20:48:39.273 - Using dynamic import() to code-split the application
+20:48:39.273 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+20:48:39.273 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+20:48:39.303 transforming...
+20:49:17.279 ✓ 4813 modules transformed.
+20:49:19.255 rendering chunks...
+20:49:28.894 node_modules/.nitro/vite/services/ssr/wrangler.json                                               1.24 kB
+20:49:28.895 node_modules/.nitro/vite/services/ssr/.vite/manifest.json                                         7.10 kB
+20:49:28.896 node_modules/.nitro/vite/services/ssr/assets/styles-CNortBeq.css                                 92.60 kB
+20:49:28.896 node_modules/.nitro/vite/services/ssr/index.js                                                    0.10 kB
+20:49:28.897 node_modules/.nitro/vite/services/ssr/assets/__23tanstack-start-plugin-adapters-Cwee5PKy.js       0.14 kB
+20:49:28.897 node_modules/.nitro/vite/services/ssr/assets/x-D_Vd0BJu.js                                        0.24 kB
+20:49:28.897 node_modules/.nitro/vite/services/ssr/assets/trash-2-s3geEwZz.js                                  0.64 kB
+20:49:28.898 node_modules/.nitro/vite/services/ssr/assets/_tanstack-start-manifest_v-CBm387_l.js               1.59 kB
+20:49:28.898 node_modules/.nitro/vite/services/ssr/assets/start-BVERGOEK.js                                    2.02 kB
+20:49:28.898 node_modules/.nitro/vite/services/ssr/assets/worker_threads-CTt0TNc6.js                           3.30 kB
+20:49:28.898 node_modules/.nitro/vite/services/ssr/assets/TopNav-B6iicHrl.js                                   5.44 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/dashboard-DAOGx9c2.js                                6.47 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/multipart-parser-DxMOQsAw.js                        10.62 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/index-ysDKxyQX.js                                   14.29 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/billing-B4odQWKN.js                                 14.40 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/settings-CEUO3-ys.js                                20.56 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/worker-entry-Ct16wbsT.js                            23.34 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/invoices-BpJFWWvK.js                                28.33 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/index-BzLChpyv.js                                   40.05 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/billing-DptK5Sj5.js                                 49.96 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/router-Clg4lSYf.js                                 167.12 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/index-9bM9JtJ7.js                                  240.91 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/proxy-gdt8OI__.js                                  270.23 kB
+20:49:28.899 node_modules/.nitro/vite/services/ssr/assets/server-DlkKOrYU.js                                 736.20 kB
+20:49:28.900 node_modules/.nitro/vite/services/ssr/assets/ThangakaviyaTemplate-icGV4lK4.js                 1,786.48 kB
+20:49:28.900 node_modules/.nitro/vite/services/ssr/assets/billing-actions-DGXCebJP.js                     29,470.79 kB
+20:49:28.900 ✓ built in 49.62s
+20:49:28.900 [start] [nitro] Building [Nitro] (preset: `vercel`, compatibility: `2026-05-20`)
+20:49:28.919 [success] [nitro] Generated public .vercel/output/static
+20:49:28.921 vite v7.3.3 building nitro environment for production...
+20:49:28.939 transforming...
+20:50:10.299 
+20:50:10.299 <--- Last few GCs --->
+20:50:10.300 
+20:50:10.300 [223:0x84ea000]    98462 ms: Scavenge (interleaved) 4055.2 (4082.6) -> 4055.0 (4128.1) MB, pooled: 0 MB, 216.34 / 0.00 ms  (average mu = 0.266, current mu = 0.227) allocation failure; 
+20:50:10.300 [223:0x84ea000]   102253 ms: Mark-Compact (reduce) 4069.0 (4128.1) -> 4067.9 (4080.6) MB, pooled: 0 MB, 1131.95 / 0.00 ms  (+ 2158.5 ms in 223 steps since start of marking, biggest step 26.8 ms, walltime since start of marking 3365 ms) (average mu = 0.259
+20:50:10.301 FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
+20:50:10.301 ----- Native stack trace -----
+20:50:10.301 
+20:50:10.311  1: 0x73f8c4 node::OOMErrorHandler(char const*, v8::OOMDetails const&) [node]
+20:50:10.312  2: 0xc06f90  [node]
+20:50:10.312  3: 0xc0707f  [node]
+20:50:10.313  4: 0xeaa885  [node]
+20:50:10.319  5: 0xeaa8b2  [node]
+20:50:10.319  6: 0xeaabaa  [node]
+20:50:10.320  7: 0xebb8aa  [node]
+20:50:10.322  8: 0xebfc50  [node]
+20:50:10.323  9: 0x1953f71  [node]

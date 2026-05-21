@@ -4,7 +4,7 @@ import { Plus, Trash2, Download, Eye, X, Save, CheckCircle, Clock, AlertCircle, 
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { useBilling, type Invoice } from "@/store/billing";
-import { saveInvoiceAction, addCustomerAction } from "@/lib/billing-actions";
+import { saveInvoiceAction, addCustomerAction, addProductAction } from "@/lib/billing-actions";
 import { TopNav } from "@/components/TopNav";
 import { ProductCombobox } from "@/components/ProductCombobox";
 import type { PaymentStatus, TransportHeader } from "@/types/billing";
@@ -17,7 +17,8 @@ export const Route = createFileRoute("/billing")({
 
 interface Row {
   id: string;
-  cases: number;
+  caseText: string;
+  caseQty: number;
   code: string;
   name: string;
   hsn: string;
@@ -30,10 +31,11 @@ interface Row {
 
 const blankRow = (): Row => ({
   id: Math.random().toString(36).slice(2, 9),
-  cases: 0,
+  caseText: "",
+  caseQty: 0,
   code: "",
   name: "",
-  hsn: "",
+  hsn: "3604",
   qty: 0,
   unit: "",
   packing: "",
@@ -62,7 +64,6 @@ function BillingPage() {
   const [rows, setRows] = useState<Row[]>([blankRow()]);
   const [discount, setDiscount] = useState<number>(config.defaultDiscount);
   const [handling, setHandling] = useState(0);
-  const [mahamai, setMahamai] = useState(0);
   const [insurance, setInsurance] = useState(0);
   const [freight, setFreight] = useState(0);
   const [taxType, setTaxType] = useState<"Inter-state" | "Intra-state">("Intra-state");
@@ -78,7 +79,7 @@ function BillingPage() {
   const [partialAmount, setPartialAmount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [savedInvoiceNo, setSavedInvoiceNo] = useState<string | null>(null);
-  const [focusRef, setFocusRef] = useState<{ id: string; field: "cases" | "qty" | "rate" } | null>(null);
+  const [focusRef, setFocusRef] = useState<{ id: string; field: "caseText" | "caseQty" | "qty" | "rate" } | null>(null);
   const pdfTemplateRef = useRef<HTMLDivElement>(null);
 
 
@@ -92,19 +93,15 @@ function BillingPage() {
   const addRow = () => {
     const nr = blankRow();
     setRows((rs) => [...rs, nr]);
-    setFocusRef({ id: nr.id, field: "cases" });
+    setFocusRef({ id: nr.id, field: "caseText" });
   };
   const removeRow = (id: string) => setRows((rs) => rs.filter((r) => r.id !== id));
 
   const lineTotals = rows.map((r) => r.qty * r.rate);
   const subtotal = lineTotals.reduce((a, b) => a + b, 0);
   const discountAmt = (subtotal * discount) / 100;
-  
-  // Calculate mahamai based on subtotal if not manually overridden
-  const calculatedMahamai = (subtotal * config.mahamaiRate) / 100;
-  const currentMahamai = mahamai === 0 ? calculatedMahamai : mahamai;
 
-  const taxable = subtotal - discountAmt + handling + currentMahamai + insurance + freight;
+  const taxable = subtotal - discountAmt + handling + insurance + freight;
   const cgstAmt = taxType === "Intra-state" ? (taxable * cgst) / 100 : 0;
   const sgstAmt = taxType === "Intra-state" ? (taxable * sgst) / 100 : 0;
   const igstAmt = taxType === "Inter-state" ? (taxable * igst) / 100 : 0;
@@ -118,7 +115,7 @@ function BillingPage() {
     await new Promise(r => setTimeout(r, 150)); // Let template render
     try {
       const canvas = await html2canvas(el, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
@@ -134,7 +131,7 @@ function BillingPage() {
           });
         }
       });
-      const imgData = canvas.toDataURL("image/png");
+      const imgData = canvas.toDataURL("image/jpeg", 0.8);
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfW = pdf.internal.pageSize.getWidth();
       const pdfH = pdf.internal.pageSize.getHeight();
@@ -142,9 +139,9 @@ function BillingPage() {
       const imgH = (imgProps.height * pdfW) / imgProps.width;
       // Multi-page if content overflows
       let y = 0;
-      while (y < imgH) {
+      while (y < imgH - 0.5) {
         if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, -y, pdfW, imgH);
+        pdf.addImage(imgData, "JPEG", 0, -y, pdfW, imgH);
         y += pdfH;
       }
       pdf.save(`${header.invoiceNo}.pdf`);
@@ -206,7 +203,6 @@ function BillingPage() {
       discount: discountAmt,
       packingCharges: handling,
       freight,
-      mahamai: currentMahamai,
       insurance,
       taxAmount,
       netTotal: grandTotal,
@@ -218,7 +214,26 @@ function BillingPage() {
     setIsSaving(true);
     try {
       await (saveInvoiceAction as any)({ data: invoiceData });
-      
+
+      // Auto-save any new products
+      for (const r of validRows) {
+        const exists = products.some(p => p.name.toLowerCase() === r.name.toLowerCase());
+        if (!exists) {
+          await (addProductAction as any)({
+            data: {
+              code: r.code || `P-${Date.now().toString().slice(-4)}`,
+              name: r.name,
+              hsn: r.hsn || "3604",
+              unit: r.unit || "nos",
+              packing: r.packing || "",
+              rateA: r.rate,
+              rateB: r.rate,
+              company: selectedCompany
+            }
+          });
+        }
+      }
+
       // Auto-add customer if new
       const exists = customers.some(c => c.name.toLowerCase() === header.customerName.toLowerCase());
       if (!exists && header.customerName.trim()) {
@@ -251,441 +266,477 @@ function BillingPage() {
   return (
     <>
       <div className="min-h-screen relative overflow-hidden bg-[#fdf6e3]">
-      {/* Background Layer */}
-      <div className="absolute inset-0 z-0">
-        <img
-          src="/dashboard_background.png"
-          className="w-full h-full object-cover opacity-80"
-          alt=""
-        />
-        <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" />
-      </div>
-
-      <div className="relative z-10 flex flex-col h-full">
-        <TopNav />
-        <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="text-sm text-muted-foreground">Billing for</p>
-            <h1 className="text-3xl font-bold">{companyName}</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsPreview(true)}
-              className="bg-white/50 text-[#8b6d4d] hover:text-[#c0421b] border-2 border-[#d4bc8d]/20 px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 hover:bg-white shadow-sm"
-            >
-              <Eye className="w-4 h-4" />
-              Preview
-            </button>
-            {savedInvoiceNo && (
-              <button
-                onClick={generatePDF}
-                disabled={generating}
-                className="bg-white/50 border-2 border-[#c0421b]/40 text-[#c0421b] px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#c0421b]/5 disabled:opacity-50 transition-all"
-              >
-                {generating ? (
-                  <div className="w-4 h-4 border-2 border-[#c0421b]/30 border-t-[#c0421b] rounded-full animate-spin" />
-                ) : (
-                  <><Download className="w-4 h-4" /> PDF</>                
-                )}
-              </button>
-            )}
-            <button
-              onClick={openSaveDialog}
-              className="bg-festive text-white px-6 py-2 rounded-xl text-sm font-bold shadow-festive hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
-            >
-              <Save className="w-4 h-4" />
-              Save Invoice
-            </button>
-          </div>
+        {/* Background Layer */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="/dashboard_background.png"
+            className="w-full h-full object-cover opacity-80"
+            alt=""
+          />
+          <div className="absolute inset-0 bg-white/30 backdrop-blur-[1px]" />
         </div>
 
-        <div ref={invoiceRef} className="bg-card border rounded-2xl p-8 space-y-6">
-          {/* Invoice header */}
-          <div className="flex justify-between items-start border-b pb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-ember">{companyName}</h2>
-              <p className="text-sm text-muted-foreground">Tax Invoice</p>
-            </div>
-            <div className="text-right text-sm">
-              <div className="flex items-center gap-2 justify-end">
-                <label className="text-muted-foreground">Invoice No:</label>
-                <input
-                  value={header.invoiceNo}
-                  onChange={(e) => setHeader({ ...header, invoiceNo: e.target.value })}
-                  className="border rounded px-2 py-1 bg-background"
-                />
-              </div>
-              <div className="flex items-center gap-2 justify-end mt-2">
-                <label className="text-muted-foreground">Date:</label>
-                <input
-                  type="date"
-                  value={header.date}
-                  onChange={(e) => setHeader({ ...header, date: e.target.value })}
-                  className="border rounded px-2 py-1 bg-background"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-4">
+        <div className="relative z-10 flex flex-col h-full">
+          <TopNav />
+          <main className="max-w-7xl mx-auto px-6 py-8">
+            <div className="flex items-center justify-between mb-6">
               <div>
-                <p className="text-xs uppercase font-bold text-muted-foreground mb-2">Bill To</p>
-                <div className="relative group">
-                  <select
-                    className="w-full border-2 border-[#d4bc8d]/30 rounded-xl px-4 py-3 bg-white/50 focus:border-[#c0421b] outline-none transition-all appearance-none"
-                    onChange={(e) => {
-                      const c = customers.find((x) => x.name === e.target.value);
-                      if (c) {
-                        setHeader({
-                          ...header,
-                          customerName: c.name,
-                          customerAddress: `${c.address1}, ${c.address2}, ${c.address3}`,
-                          customerGstin: c.gstin,
-                        });
-                      }
-                    }}
+                <p className="text-sm text-muted-foreground">Billing for</p>
+                <h1 className="text-3xl font-bold">{companyName}</h1>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsPreview(true)}
+                  className="bg-white/50 text-[#8b6d4d] hover:text-[#c0421b] border-2 border-[#d4bc8d]/20 px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2 hover:bg-white shadow-sm"
+                >
+                  <Eye className="w-4 h-4" />
+                  Preview
+                </button>
+                {savedInvoiceNo && (
+                  <button
+                    onClick={generatePDF}
+                    disabled={generating}
+                    className="bg-white/50 border-2 border-[#c0421b]/40 text-[#c0421b] px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#c0421b]/5 disabled:opacity-50 transition-all"
                   >
-                    <option value="">Select Existing Customer...</option>
-                    {customers.map((c) => (
-                      <option key={c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#8b6d4d]">
-                    ▼
-                  </div>
-                </div>
-              </div>
-              
-              <input
-                placeholder="Customer Name"
-                value={header.customerName}
-                onChange={(e) => setHeader({ ...header, customerName: e.target.value })}
-                className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-4 py-2 bg-white/30 focus:border-[#c0421b] outline-none"
-              />
-              <textarea
-                placeholder="Customer Address"
-                value={header.customerAddress}
-                onChange={(e) => setHeader({ ...header, customerAddress: e.target.value })}
-                rows={2}
-                className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-4 py-2 bg-white/30 focus:border-[#c0421b] outline-none"
-              />
-              <div className="flex gap-4">
-                <input
-                  placeholder="GSTIN"
-                  value={header.customerGstin}
-                  onChange={(e) => setHeader({ ...header, customerGstin: e.target.value })}
-                  className="flex-1 border-2 border-[#d4bc8d]/20 rounded-xl px-4 py-2 bg-white/30 focus:border-[#c0421b] outline-none"
-                />
+                    {generating ? (
+                      <div className="w-4 h-4 border-2 border-[#c0421b]/30 border-t-[#c0421b] rounded-full animate-spin" />
+                    ) : (
+                      <><Download className="w-4 h-4" /> PDF</>
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={openSaveDialog}
+                  className="bg-festive text-white px-6 py-2 rounded-xl text-sm font-bold shadow-festive hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" />
+                  Save Invoice
+                </button>
               </div>
             </div>
-            
-            <div className="space-y-3">
-              <p className="text-xs uppercase font-bold text-muted-foreground mb-2">Transport & Delivery</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">LR No.</label>
-                  <input
-                    placeholder="LR Number"
-                    value={transport.lrNo}
-                    onChange={(e) => setTransport({ ...transport, lrNo: e.target.value })}
-                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">LR Date</label>
-                  <input
-                    type="date"
-                    value={transport.lrDate}
-                    onChange={(e) => setTransport({ ...transport, lrDate: e.target.value })}
-                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Order No.</label>
-                  <input
-                    placeholder="Buyer's Order No."
-                    value={transport.orderNo}
-                    onChange={(e) => setTransport({ ...transport, orderNo: e.target.value })}
-                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Order Date</label>
-                  <input
-                    type="date"
-                    value={transport.orderDate}
-                    onChange={(e) => setTransport({ ...transport, orderDate: e.target.value })}
-                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Despatched Through</label>
-                  <input
-                    placeholder="e.g. ASSAM ROAD WAYS"
-                    value={transport.despatchedThrough}
-                    onChange={(e) => setTransport({ ...transport, despatchedThrough: e.target.value })}
-                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Destination</label>
-                  <input
-                    placeholder="e.g. Madurai"
-                    value={transport.destination}
-                    onChange={(e) => setTransport({ ...transport, destination: e.target.value })}
-                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Vehicle No.</label>
-                  <input
-                    placeholder="Vehicle Number"
-                    value={transport.vehicleNo}
-                    onChange={(e) => setTransport({ ...transport, vehicleNo: e.target.value })}
-                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Terms of Delivery</label>
-                  <input
-                    placeholder="e.g. Ex-Factory"
-                    value={transport.termsOfDelivery}
-                    onChange={(e) => setTransport({ ...transport, termsOfDelivery: e.target.value })}
-                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Items table */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-[#fdf6e3] text-xs uppercase text-[#8b6d4d] border-y-2 border-[#d4bc8d]/30">
-                <tr>
-                  <th className="px-2 py-3 text-left">S.No</th>
-                  <th className="px-2 py-3 text-left">Code</th>
-                  <th className="px-2 py-3 text-left">Cases</th>
-                  <th className="px-2 py-3 text-left">Particulars</th>
-                  <th className="px-2 py-3 text-left">HSN</th>
-                  <th className="px-2 py-3 text-left">Packing</th>
-                  <th className="px-2 py-3 text-right">Qty</th>
-                  <th className="px-2 py-3 text-left">Unit</th>
-                  <th className="px-2 py-3 text-right">Rate</th>
-                  <th className="px-2 py-3 text-right">Amount</th>
-                  <th className="px-2 py-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, i) => (
-                  <tr key={r.id} className="border-b border-[#d4bc8d]/10 hover:bg-[#c0421b]/5 transition-colors">
-                    <td className="px-2 py-3 font-medium text-[#4a3728]">{i + 1}</td>
-                    <td className="px-2 py-3 text-[#8b6d4d] font-mono text-[10px]">{r.code}</td>
-                    <td className="px-2 py-3 w-20">
-                      <input
-                        type="number"
-                        min={0}
-                        value={r.cases}
-                        ref={(el) => {
-                          if (focusRef?.id === r.id && focusRef?.field === "cases" && el) {
-                            el.focus();
-                            setFocusRef(null);
-                          }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => updateRow(r.id, { cases: +e.target.value })}
-                        className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none no-spinner"
-                      />
-                    </td>
-                    <td className="px-2 py-3 min-w-[16rem]">
-                      <ProductCombobox
-                        products={products}
-                        value={r.name}
-                        onSelect={(p) => {
-                          updateRow(r.id, {
-                            code: p.code,
-                            name: p.name,
-                            hsn: p.hsn,
-                            unit: p.unit,
-                            packing: p.packing,
-                            rate: selectedCompany === "Jayakavi" ? p.rateA : p.rateB,
-                            company: p.company,
-                          });
-                          setFocusRef({ id: r.id, field: "qty" });
-                        }}
-                      />
-                    </td>
-                    <td className="px-2 py-3 text-[#8b6d4d] text-xs">{r.hsn}</td>
-                    <td className="px-2 py-3 text-[#8b6d4d] text-xs italic">{r.packing}</td>
-                    <td className="px-2 py-3 w-20">
-                      <input
-                        type="number"
-                        min={0}
-                        value={r.qty}
-                        ref={(el) => {
-                          if (focusRef?.id === r.id && focusRef?.field === "qty" && el) {
-                            el.focus();
-                            setFocusRef(null);
-                          }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => updateRow(r.id, { qty: +e.target.value })}
-                        className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-right no-spinner"
-                      />
-                    </td>
-                    <td className="px-2 py-3 text-[#8b6d4d] text-xs">{r.unit}</td>
-                    <td className="px-2 py-3 w-24">
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={r.rate}
-                        ref={(el) => {
-                          if (focusRef?.id === r.id && focusRef?.field === "rate" && el) {
-                            el.focus();
-                            setFocusRef(null);
-                          }
-                        }}
-                        onFocus={(e) => e.target.select()}
-                        onChange={(e) => updateRow(r.id, { rate: +e.target.value })}
-                        className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-right no-spinner"
-                      />
-                    </td>
-                    <td className="px-2 py-3 text-right font-bold text-[#4a3728]">{fmt(r.qty * r.rate)}</td>
-                    <td className="px-2 py-2">
-                      {rows.length > 1 && (
-                        <button
-                          onClick={() => removeRow(r.id)}
-                          className="text-destructive hover:bg-destructive/10 p-1 rounded"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button
-              onClick={addRow}
-              className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-            >
-              <Plus className="w-4 h-4" /> Add row
-            </button>
-          </div>
-
-          {/* Totals Section */}
-          <div className="grid md:grid-cols-2 gap-8 pt-8 border-t-2 border-[#d4bc8d]/30">
-            <div className="space-y-4">
-              <p className="text-xs uppercase font-bold text-[#8b6d4d]">Adjustments & Tax</p>
-              <div className="bg-white/40 rounded-2xl p-6 border-2 border-[#d4bc8d]/20 space-y-3">
-                {(
-                  [
-                    ["Discount (%)", discount, setDiscount],
-                    ["Packing Charges", handling, setHandling],
-                    ["Mahamai", currentMahamai, setMahamai],
-                    ["Insurance", insurance, setInsurance],
-                    ["Freight", freight, setFreight],
-                  ] as const
-                ).map(([label, val, setter]) => (
-                  <div key={label} className="flex items-center justify-between gap-4">
-                    <label className="text-sm font-medium text-[#4a3728]">{label}</label>
+            <div ref={invoiceRef} className="bg-card border rounded-2xl p-8 space-y-6">
+              {/* Invoice header */}
+              <div className="flex justify-between items-start border-b pb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-ember">{companyName}</h2>
+                  <p className="text-sm text-muted-foreground">Tax Invoice</p>
+                </div>
+                <div className="text-right text-sm">
+                  <div className="flex items-center gap-2 justify-end">
+                    <label className="text-muted-foreground">Invoice No:</label>
                     <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={val}
-                      onFocus={(e) => e.target.select()}
-                      onChange={(e) => setter(+e.target.value)}
-                      className="w-32 border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none text-right no-spinner"
+                      value={header.invoiceNo}
+                      onChange={(e) => setHeader({ ...header, invoiceNo: e.target.value })}
+                      className="border rounded px-2 py-1 bg-background"
                     />
                   </div>
-                ))}
-                <div className="pt-4 space-y-3 min-h-[140px]">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-bold text-[#4a3728]">Tax Type</label>
-                    <select
-                      value={taxType}
-                      onChange={(e) => setTaxType(e.target.value as "Inter-state" | "Intra-state")}
-                      className="w-40 border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none"
-                    >
-                      <option value="Intra-state">Intra-state (CGST/SGST)</option>
-                      <option value="Inter-state">Inter-state (IGST)</option>
-                    </select>
+                  <div className="flex items-center gap-2 justify-end mt-2">
+                    <label className="text-muted-foreground">Date:</label>
+                    <input
+                      type="date"
+                      value={header.date}
+                      onChange={(e) => setHeader({ ...header, date: e.target.value })}
+                      className="border rounded px-2 py-1 bg-background"
+                    />
                   </div>
-                  <div className="grid grid-cols-2 gap-4 h-14">
-                    {taxType === "Intra-state" ? (
-                      <>
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-bold text-[#8b6d4d]">CGST (%)</label>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs uppercase font-bold text-muted-foreground mb-2">Bill To</p>
+                    <div className="relative group">
+                      <select
+                        className="w-full border-2 border-[#d4bc8d]/30 rounded-xl px-4 py-3 bg-white/50 focus:border-[#c0421b] outline-none transition-all appearance-none"
+                        onChange={(e) => {
+                          const c = customers.find((x) => x.name === e.target.value);
+                          if (c) {
+                            setHeader({
+                              ...header,
+                              customerName: c.name,
+                              customerAddress: `${c.address1}, ${c.address2}, ${c.address3}`,
+                              customerGstin: c.gstin,
+                            });
+                          }
+                        }}
+                      >
+                        <option value="">Select Existing Customer...</option>
+                        {customers.map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#8b6d4d]">
+                        ▼
+                      </div>
+                    </div>
+                  </div>
+
+                  <input
+                    placeholder="Customer Name"
+                    value={header.customerName}
+                    onChange={(e) => setHeader({ ...header, customerName: e.target.value })}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-4 py-2 bg-white/30 focus:border-[#c0421b] outline-none"
+                  />
+                  <textarea
+                    placeholder="Customer Address"
+                    value={header.customerAddress}
+                    onChange={(e) => setHeader({ ...header, customerAddress: e.target.value })}
+                    rows={2}
+                    className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-4 py-2 bg-white/30 focus:border-[#c0421b] outline-none"
+                  />
+                  <div className="flex gap-4">
+                    <input
+                      placeholder="GSTIN"
+                      value={header.customerGstin}
+                      onChange={(e) => setHeader({ ...header, customerGstin: e.target.value })}
+                      className="flex-1 border-2 border-[#d4bc8d]/20 rounded-xl px-4 py-2 bg-white/30 focus:border-[#c0421b] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-xs uppercase font-bold text-muted-foreground mb-2">Transport & Delivery</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">LR No.</label>
+                      <input
+                        placeholder="LR Number"
+                        value={transport.lrNo}
+                        onChange={(e) => setTransport({ ...transport, lrNo: e.target.value })}
+                        className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">LR Date</label>
+                      <input
+                        type="date"
+                        value={transport.lrDate}
+                        onChange={(e) => setTransport({ ...transport, lrDate: e.target.value })}
+                        className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Order No.</label>
+                      <input
+                        placeholder="Buyer's Order No."
+                        value={transport.orderNo}
+                        onChange={(e) => setTransport({ ...transport, orderNo: e.target.value })}
+                        className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Order Date</label>
+                      <input
+                        type="date"
+                        value={transport.orderDate}
+                        onChange={(e) => setTransport({ ...transport, orderDate: e.target.value })}
+                        className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Despatched Through</label>
+                      <input
+                        placeholder="e.g. ASSAM ROAD WAYS"
+                        value={transport.despatchedThrough}
+                        onChange={(e) => setTransport({ ...transport, despatchedThrough: e.target.value })}
+                        className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Destination</label>
+                      <input
+                        placeholder="e.g. Madurai"
+                        value={transport.destination}
+                        onChange={(e) => setTransport({ ...transport, destination: e.target.value })}
+                        className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Vehicle No.</label>
+                      <input
+                        placeholder="Vehicle Number"
+                        value={transport.vehicleNo}
+                        onChange={(e) => setTransport({ ...transport, vehicleNo: e.target.value })}
+                        className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-[#8b6d4d] uppercase font-bold">Terms of Delivery</label>
+                      <input
+                        placeholder="e.g. Ex-Factory"
+                        value={transport.termsOfDelivery}
+                        onChange={(e) => setTransport({ ...transport, termsOfDelivery: e.target.value })}
+                        className="w-full border-2 border-[#d4bc8d]/20 rounded-xl px-3 py-1.5 bg-white/30 focus:border-[#c0421b] outline-none text-sm mt-1"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-[#fdf6e3] text-xs uppercase text-[#8b6d4d] border-y-2 border-[#d4bc8d]/30">
+                    <tr>
+                      <th className="px-2 py-3 text-left">S.No</th>
+                      <th className="px-2 py-3 text-left">Code</th>
+                      <th className="px-2 py-3 text-left">Case</th>
+                      <th className="px-2 py-3 text-left">Case Qty</th>
+                      <th className="px-2 py-3 text-left">Particulars</th>
+                      <th className="px-2 py-3 text-left">HSN</th>
+                      <th className="px-2 py-3 text-left">Packing</th>
+                      <th className="px-2 py-3 text-right">Qty</th>
+                      <th className="px-2 py-3 text-left">Unit</th>
+                      <th className="px-2 py-3 text-right">Rate</th>
+                      <th className="px-2 py-3 text-right">Amount</th>
+                      <th className="px-2 py-3"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r, i) => (
+                      <tr key={r.id} className="border-b border-[#d4bc8d]/10 hover:bg-[#c0421b]/5 transition-colors">
+                        <td className="px-2 py-3 font-medium text-[#4a3728]">{i + 1}</td>
+                        <td className="px-2 py-3 text-[#8b6d4d] font-mono text-[10px]">{r.code}</td>
+                        <td className="px-2 py-3 w-20">
+                          <input
+                            type="text"
+                            value={r.caseText}
+                            ref={(el) => {
+                              if (focusRef?.id === r.id && focusRef?.field === "caseText" && el) {
+                                el.focus();
+                                setFocusRef(null);
+                              }
+                            }}
+                            placeholder="200-250"
+                            onChange={(e) => updateRow(r.id, { caseText: e.target.value })}
+                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none"
+                          />
+                        </td>
+                        <td className="px-2 py-3 w-16">
                           <input
                             type="number"
-                            value={cgst}
+                            min={0}
+                            value={r.caseQty}
+                            ref={(el) => {
+                              if (focusRef?.id === r.id && focusRef?.field === "caseQty" && el) {
+                                el.focus();
+                                setFocusRef(null);
+                              }
+                            }}
                             onFocus={(e) => e.target.select()}
-                            onChange={(e) => setCgst(+e.target.value)}
-                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none no-spinner"
+                            onChange={(e) => updateRow(r.id, { caseQty: +e.target.value })}
+                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none no-spinner"
                           />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] uppercase font-bold text-[#8b6d4d]">SGST (%)</label>
+                        </td>
+                        <td className="px-2 py-3 min-w-[16rem]">
+                          <ProductCombobox
+                            products={products}
+                            value={r.name}
+                            onNameChange={(name) => updateRow(r.id, { name })}
+                            onSelect={(p) => {
+                              updateRow(r.id, {
+                                code: p.code,
+                                name: p.name,
+                                hsn: p.hsn,
+                                unit: p.unit,
+                                packing: p.packing,
+                                rate: selectedCompany === "Jayakavi" ? p.rateA : p.rateB,
+                                company: p.company,
+                              });
+                              setFocusRef({ id: r.id, field: "qty" });
+                            }}
+                          />
+                        </td>
+                        <td className="px-2 py-3 w-20">
+                          <input
+                            type="text"
+                            value={r.hsn}
+                            onChange={(e) => updateRow(r.id, { hsn: e.target.value })}
+                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-[#8b6d4d] text-xs"
+                          />
+                        </td>
+                        <td className="px-2 py-3 w-24">
+                          <input
+                            type="text"
+                            value={r.packing}
+                            onChange={(e) => updateRow(r.id, { packing: e.target.value })}
+                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-[#8b6d4d] text-xs italic"
+                          />
+                        </td>
+                        <td className="px-2 py-3 w-20">
                           <input
                             type="number"
-                            value={sgst}
+                            min={0}
+                            value={r.qty}
+                            ref={(el) => {
+                              if (focusRef?.id === r.id && focusRef?.field === "qty" && el) {
+                                el.focus();
+                                setFocusRef(null);
+                              }
+                            }}
                             onFocus={(e) => e.target.select()}
-                            onChange={(e) => setSgst(+e.target.value)}
-                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none no-spinner"
+                            onChange={(e) => updateRow(r.id, { qty: +e.target.value })}
+                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-right no-spinner"
                           />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="col-span-2 space-y-1">
-                        <label className="text-[10px] uppercase font-bold text-[#8b6d4d]">IGST (%)</label>
+                        </td>
+                        <td className="px-2 py-3 w-20">
+                          <input
+                            type="text"
+                            value={r.unit}
+                            onChange={(e) => updateRow(r.id, { unit: e.target.value })}
+                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-[#8b6d4d] text-xs"
+                          />
+                        </td>
+                        <td className="px-2 py-3 w-24">
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            value={r.rate}
+                            ref={(el) => {
+                              if (focusRef?.id === r.id && focusRef?.field === "rate" && el) {
+                                el.focus();
+                                setFocusRef(null);
+                              }
+                            }}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => updateRow(r.id, { rate: +e.target.value })}
+                            className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-2 py-1 bg-white/50 focus:border-[#c0421b] outline-none text-right no-spinner"
+                          />
+                        </td>
+                        <td className="px-2 py-3 text-right font-bold text-[#4a3728]">{fmt(r.qty * r.rate)}</td>
+                        <td className="px-2 py-2">
+                          {rows.length > 1 && (
+                            <button
+                              onClick={() => removeRow(r.id)}
+                              className="text-destructive hover:bg-destructive/10 p-1 rounded"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button
+                  onClick={addRow}
+                  className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                >
+                  <Plus className="w-4 h-4" /> Add row
+                </button>
+              </div>
+
+              {/* Totals Section */}
+              <div className="grid md:grid-cols-2 gap-8 pt-8 border-t-2 border-[#d4bc8d]/30">
+                <div className="space-y-4">
+                  <p className="text-xs uppercase font-bold text-[#8b6d4d]">Adjustments & Tax</p>
+                  <div className="bg-white/40 rounded-2xl p-6 border-2 border-[#d4bc8d]/20 space-y-3">
+                    {(
+                      [
+                        ["Discount (%)", discount, setDiscount],
+                        ["Packing Charges", handling, setHandling],
+                        ["Insurance", insurance, setInsurance],
+                        ["Freight", freight, setFreight],
+                      ] as const
+                    ).map(([label, val, setter]) => (
+                      <div key={label} className="flex items-center justify-between gap-4">
+                        <label className="text-sm font-medium text-[#4a3728]">{label}</label>
                         <input
                           type="number"
-                          value={igst}
+                          min={0}
+                          step="0.01"
+                          value={val}
                           onFocus={(e) => e.target.select()}
-                          onChange={(e) => setIgst(+e.target.value)}
-                          className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none no-spinner"
+                          onChange={(e) => setter(+e.target.value)}
+                          className="w-32 border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none text-right no-spinner"
                         />
                       </div>
-                    )}
+                    ))}
+                    <div className="pt-4 space-y-3 min-h-[140px]">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-bold text-[#4a3728]">Tax Type</label>
+                        <select
+                          value={taxType}
+                          onChange={(e) => setTaxType(e.target.value as "Inter-state" | "Intra-state")}
+                          className="w-40 border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none"
+                        >
+                          <option value="Intra-state">Intra-state (CGST/SGST)</option>
+                          <option value="Inter-state">Inter-state (IGST)</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 h-14">
+                        {taxType === "Intra-state" ? (
+                          <>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase font-bold text-[#8b6d4d]">CGST (%)</label>
+                              <input
+                                type="number"
+                                value={cgst}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => setCgst(+e.target.value)}
+                                className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none no-spinner"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase font-bold text-[#8b6d4d]">SGST (%)</label>
+                              <input
+                                type="number"
+                                value={sgst}
+                                onFocus={(e) => e.target.select()}
+                                onChange={(e) => setSgst(+e.target.value)}
+                                className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none no-spinner"
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <div className="col-span-2 space-y-1">
+                            <label className="text-[10px] uppercase font-bold text-[#8b6d4d]">IGST (%)</label>
+                            <input
+                              type="number"
+                              value={igst}
+                              onFocus={(e) => e.target.select()}
+                              onChange={(e) => setIgst(+e.target.value)}
+                              className="w-full border-2 border-[#d4bc8d]/20 rounded-lg px-3 py-1.5 bg-white/50 focus:border-[#c0421b] outline-none no-spinner"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-[#c0421b]/5 rounded-3xl p-8 space-y-4 border-2 border-[#c0421b]/10 h-fit">
+                  <p className="text-xs uppercase font-bold text-[#c0421b] mb-4">Final Summary</p>
+                  <SummaryRow label="Subtotal" value={fmt(subtotal)} />
+                  <SummaryRow label={`Discount (${discount}%)`} value={`- ${fmt(discountAmt)}`} />
+                  <SummaryRow label="Packing Charges" value={fmt(handling)} />
+                  <SummaryRow label="Insurance" value={fmt(insurance)} />
+                  <SummaryRow label="Freight" value={fmt(freight)} />
+                  <div className="border-t border-[#c0421b]/10 my-4" />
+                  <SummaryRow label="Taxable Value" value={fmt(taxable)} bold />
+                  {taxType === "Intra-state" ? (
+                    <>
+                      <SummaryRow label={`CGST @ ${cgst}%`} value={fmt(cgstAmt)} />
+                      <SummaryRow label={`SGST @ ${sgst}%`} value={fmt(sgstAmt)} />
+                    </>
+                  ) : (
+                    <SummaryRow label={`IGST @ ${igst}%`} value={fmt(igstAmt)} />
+                  )}
+                  <div className="border-t-2 border-[#c0421b]/20 my-6" />
+                  <div className="flex justify-between items-end">
+                    <span className="text-sm font-bold text-[#8b6d4d]">Total Payable</span>
+                    <span className="text-3xl font-black text-[#c0421b]">₹ {fmt(grandTotal)}</span>
                   </div>
                 </div>
               </div>
             </div>
-
-            <div className="bg-[#c0421b]/5 rounded-3xl p-8 space-y-4 border-2 border-[#c0421b]/10 h-fit">
-              <p className="text-xs uppercase font-bold text-[#c0421b] mb-4">Final Summary</p>
-              <SummaryRow label="Subtotal" value={fmt(subtotal)} />
-              <SummaryRow label={`Discount (${discount}%)`} value={`- ${fmt(discountAmt)}`} />
-              <SummaryRow label="Packing Charges" value={fmt(handling)} />
-              <SummaryRow label="Mahamai" value={fmt(currentMahamai)} />
-              <SummaryRow label="Insurance" value={fmt(insurance)} />
-              <SummaryRow label="Freight" value={fmt(freight)} />
-              <div className="border-t border-[#c0421b]/10 my-4" />
-              <SummaryRow label="Taxable Value" value={fmt(taxable)} bold />
-              {taxType === "Intra-state" ? (
-                <>
-                  <SummaryRow label={`CGST @ ${cgst}%`} value={fmt(cgstAmt)} />
-                  <SummaryRow label={`SGST @ ${sgst}%`} value={fmt(sgstAmt)} />
-                </>
-              ) : (
-                <SummaryRow label={`IGST @ ${igst}%`} value={fmt(igstAmt)} />
-              )}
-              <div className="border-t-2 border-[#c0421b]/20 my-6" />
-              <div className="flex justify-between items-end">
-                <span className="text-sm font-bold text-[#8b6d4d]">Total Payable</span>
-                <span className="text-3xl font-black text-[#c0421b]">₹ {fmt(grandTotal)}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-      </div> {/* end relative z-10 */}
+          </main>
+        </div> {/* end relative z-10 */}
       </div> {/* end min-h-screen */}
 
       {/* Preview Modal */}
@@ -706,7 +757,7 @@ function BillingPage() {
                   <Download className="w-4 h-4" />
                   {generating ? "Generating..." : "Download PDF"}
                 </button>
-                <button 
+                <button
                   onClick={() => setIsPreview(false)}
                   className="bg-gray-100 text-gray-500 p-2 rounded-lg hover:bg-gray-200 transition-colors"
                 >
@@ -714,23 +765,23 @@ function BillingPage() {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-8 flex justify-center bg-gray-100 min-h-full">
               <div className="shadow-2xl scale-[0.8] origin-top md:scale-100">
                 {(selectedCompany || "").includes("Jayakavi") ? (
-                  <JayakaviTemplate 
+                  <JayakaviTemplate
                     profile={companyProfile!} header={header} transport={transport} rows={rows}
                     subtotal={subtotal} discountAmt={discountAmt} handling={handling}
-                    mahamai={currentMahamai} insurance={insurance} freight={freight}
+                    insurance={insurance} freight={freight}
                     taxType={taxType} cgst={cgst} sgst={sgst} igst={igst}
                     cgstAmt={cgstAmt} sgstAmt={sgstAmt} igstAmt={igstAmt}
                     taxAmount={taxAmount} taxable={taxable} grandTotal={grandTotal}
                   />
                 ) : (
-                  <ThangakaviyaTemplate 
+                  <ThangakaviyaTemplate
                     profile={companyProfile!} header={header} transport={transport} rows={rows}
                     subtotal={subtotal} discountAmt={discountAmt} discount={discount}
-                    handling={handling} mahamai={currentMahamai} insurance={insurance} freight={freight}
+                    handling={handling} insurance={insurance} freight={freight}
                     taxType={taxType} cgst={cgst} sgst={sgst} igst={igst}
                     cgstAmt={cgstAmt} sgstAmt={sgstAmt} igstAmt={igstAmt}
                     taxAmount={taxAmount} taxable={taxable} grandTotal={grandTotal}
@@ -746,19 +797,19 @@ function BillingPage() {
       <div style={{ position: "absolute", left: "-9999px", top: "-9999px" }}>
         <div ref={pdfTemplateRef}>
           {(selectedCompany || "").includes("Jayakavi") ? (
-            <JayakaviTemplate 
+            <JayakaviTemplate
               profile={companyProfile!} header={header} transport={transport} rows={rows}
               subtotal={subtotal} discountAmt={discountAmt} handling={handling}
-              mahamai={currentMahamai} insurance={insurance} freight={freight}
+              insurance={insurance} freight={freight}
               taxType={taxType} cgst={cgst} sgst={sgst} igst={igst}
               cgstAmt={cgstAmt} sgstAmt={sgstAmt} igstAmt={igstAmt}
               taxAmount={taxAmount} taxable={taxable} grandTotal={grandTotal}
             />
           ) : (
-            <ThangakaviyaTemplate 
+            <ThangakaviyaTemplate
               profile={companyProfile!} header={header} transport={transport} rows={rows}
               subtotal={subtotal} discountAmt={discountAmt} discount={discount}
-              handling={handling} mahamai={currentMahamai} insurance={insurance} freight={freight}
+              handling={handling} insurance={insurance} freight={freight}
               taxType={taxType} cgst={cgst} sgst={sgst} igst={igst}
               cgstAmt={cgstAmt} sgstAmt={sgstAmt} igstAmt={igstAmt}
               taxAmount={taxAmount} taxable={taxable} grandTotal={grandTotal}
@@ -777,7 +828,7 @@ function BillingPage() {
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            
+
             <div className="bg-[#fdfcfb] rounded-xl p-4 border border-[#d4bc8d]/20 space-y-1">
               <p className="text-xs text-[#8b6d4d] uppercase font-bold">Invoice Summary</p>
               <p className="font-bold text-[#4a3728]">{header.customerName}</p>
