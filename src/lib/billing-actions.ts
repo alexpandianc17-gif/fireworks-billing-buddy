@@ -26,7 +26,6 @@ export const getBillingData = createServerFn({ method: "GET" }).handler(async ()
       sgstRate: Number(settings[0]?.[2] || 9),
       igstRate: Number(settings[0]?.[3] || 18),
       defaultDiscount: Number(settings[0]?.[4] || 0),
-      mahamaiRate: Number(settings[0]?.[5] || 0),
     };
 
     const companyList: CompanyProfile[] = (companies || []).map((row) => ({
@@ -80,7 +79,7 @@ export const saveInvoiceAction = createServerFn({ method: "POST" })
       i.discount,
       i.packingCharges,
       i.freight,
-      i.mahamai,
+      0, // Pass 0 for deprecated mahamai column to maintain sheet structure
       i.insurance,
       i.taxAmount,
       i.netTotal,
@@ -96,7 +95,7 @@ export const saveInvoiceAction = createServerFn({ method: "POST" })
 export const saveSettingsAction = createServerFn({ method: "POST" })
   .handler(async (args: any) => {
     const c = args?.data || args;
-    const row = [c.pin, c.cgstRate, c.sgstRate, c.igstRate, c.defaultDiscount, c.mahamaiRate];
+    const row = [c.pin, c.cgstRate, c.sgstRate, c.igstRate, c.defaultDiscount, 0];
     await updateSheetData("Settings!A2:F2", [row]);
     return { success: true };
   });
@@ -143,7 +142,6 @@ export const getInvoicesAction = createServerFn({ method: "GET" }).handler(async
     discount: Number(row[5] || 0),
     packingCharges: Number(row[6] || 0),
     freight: Number(row[7] || 0),
-    mahamai: Number(row[8] || 0),
     insurance: Number(row[9] || 0),
     taxAmount: Number(row[10] || 0),
     netTotal: Number(row[11] || 0),
@@ -192,5 +190,22 @@ export const addCustomerAction = createServerFn({ method: "POST" })
     const c = args?.data || args;
     const row = [c.name, c.address1, c.address2 || "", c.address3 || "", c.gstin || "", c.pan || ""];
     await appendSheetData("Customers!A2:F", [row]);
+    return { success: true };
+  });
+
+export const addProductAction = createServerFn({ method: "POST" })
+  .handler(async (args: any) => {
+    const p = args?.data || args;
+    const row = [
+      p.code || `P-${Date.now().toString().slice(-4)}`,
+      p.name,
+      p.hsn || "3604",
+      p.unit || "nos",
+      p.packing || "",
+      p.rateA || 0,
+      p.rateB || 0,
+      p.company || "Both"
+    ];
+    await appendSheetData("Products!A2:H", [row]);
     return { success: true };
   });

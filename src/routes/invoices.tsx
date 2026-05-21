@@ -510,7 +510,6 @@ function InvoicesPage() {
                   subtotal={printingInv.subTotal} 
                   discountAmt={printingInv.discount} 
                   handling={printingInv.packingCharges} 
-                  mahamai={printingInv.mahamai} 
                   insurance={printingInv.insurance} 
                   freight={printingInv.freight} 
                   taxType={isInter ? "Inter-state" : "Intra-state"} 
@@ -541,7 +540,6 @@ function InvoicesPage() {
                   discountAmt={printingInv.discount} 
                   discount={0} 
                   handling={printingInv.packingCharges} 
-                  mahamai={printingInv.mahamai} 
                   insurance={printingInv.insurance} 
                   freight={printingInv.freight} 
                   taxType={isInter ? "Inter-state" : "Intra-state"} 

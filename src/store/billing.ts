@@ -40,7 +40,6 @@ export const useBilling = create<BillingState>()(
         sgstRate: 9,
         igstRate: 18,
         defaultDiscount: 0,
-        mahamaiRate: 0,
       },
       companies: [],
       products: [],
