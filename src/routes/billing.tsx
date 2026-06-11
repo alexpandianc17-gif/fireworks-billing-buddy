@@ -1,8 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 import { Plus, Trash2, Download, Eye, X, Save, CheckCircle, Clock, AlertCircle, FileText } from "lucide-react";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { useReactToPrint } from "react-to-print";
 import { useBilling, type Invoice } from "@/store/billing";
 import { saveInvoiceAction, addCustomerAction, addProductAction } from "@/lib/billing-actions";
 import { TopNav } from "@/components/TopNav";
@@ -108,51 +107,106 @@ function BillingPage() {
   const taxAmount = cgstAmt + sgstAmt + igstAmt;
   const grandTotal = taxable + cgstAmt + sgstAmt + igstAmt;
 
-  const generatePDF = async () => {
-    const el = pdfTemplateRef.current;
-    if (!el || generating) return;
-    setGenerating(true);
-    await new Promise(r => setTimeout(r, 150)); // Let template render
-    try {
-      const canvas = await html2canvas(el, {
-        scale: 1.5,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-        width: el.scrollWidth,
-        height: el.scrollHeight,
-        onclone: (doc) => {
-          const all = doc.querySelectorAll("*");
-          all.forEach((node: any) => {
-            const s = window.getComputedStyle(node);
-            if (s.color?.includes("okl")) node.style.color = "#000000";
-            if (s.backgroundColor?.includes("okl")) node.style.backgroundColor = "#ffffff";
-            if (s.borderColor?.includes("okl")) node.style.borderColor = "#000000";
-          });
-        }
-      });
-      const imgData = canvas.toDataURL("image/jpeg", 0.8);
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
-      const imgProps = pdf.getImageProperties(imgData);
-      const imgH = (imgProps.height * pdfW) / imgProps.width;
-      // Multi-page if content overflows
-      let y = 0;
-      while (y < imgH - 0.5) {
-        if (y > 0) pdf.addPage();
-        pdf.addImage(imgData, "JPEG", 0, -y, pdfW, imgH);
-        y += pdfH;
-      }
-      pdf.save(`${header.invoiceNo}.pdf`);
-    } catch (error) {
-      console.error("Failed to generate PDF:", error);
-      alert("Something went wrong while generating the PDF. Please try again.");
-    } finally {
+  // const generatePDF = async () => {
+  //   const el = pdfTemplateRef.current;
+  //   if (!el || generating) return;
+  //   setGenerating(true);
+  //   await new Promise(r => setTimeout(r, 150)); // Let template render
+  //   try {
+  //     const canvas = await html2canvas(el, {
+  //       scale: 1.5,
+  //       useCORS: true,
+  //       logging: false,
+  //       backgroundColor: "#ffffff",
+  //       width: el.scrollWidth,
+  //       height: el.scrollHeight,
+  //       onclone: (doc) => {
+  //         const all = doc.querySelectorAll("*");
+  //         all.forEach((node: any) => {
+  //           const s = window.getComputedStyle(node);
+  //           if (s.color?.includes("okl")) node.style.color = "#000000";
+  //           if (s.backgroundColor?.includes("okl")) node.style.backgroundColor = "#ffffff";
+  //           if (s.borderColor?.includes("okl")) node.style.borderColor = "#000000";
+  //         });
+  //       }
+  //     });
+  //     const imgData = canvas.toDataURL("image/jpeg", 0.8);
+  //     const pdf = new jsPDF("p", "mm", "a4");
+
+  //     // 1. Define the margin size (in mm)
+  //     const margin = 6;
+
+  //     const pdfW = pdf.internal.pageSize.getWidth();
+  //     const pdfH = pdf.internal.pageSize.getHeight();
+
+  //     // 2. Calculate the usable width and height on the page
+  //     const usableW = pdfW - (margin * 2);
+  //     const usableH = pdfH - (margin * 2);
+
+  //     // 3. Scale the canvas image to fit the usable width
+  //     const imgProps = pdf.getImageProperties(imgData);
+  //     const imgScaledH = (imgProps.height * usableW) / imgProps.width;
+
+  //     let heightLeft = imgScaledH;
+  //     let shiftPosition = 0;
+
+  //     // Helper function to draw white rectangles over the margins
+  //     // This hides any overflowing image content to create clean padding on every page
+  //     const addWhiteMargins = () => {
+  //       pdf.setFillColor(255, 255, 255);
+  //       // Top margin mask
+  //       pdf.rect(0, 0, pdfW, margin, "F");
+  //       // Bottom margin mask
+  //       pdf.rect(0, pdfH - margin, pdfW, margin, "F");
+  //     };
+
+  //     // 4. Draw the first page
+  //     // Places the image at X: margin, Y: margin
+  //     pdf.addImage(imgData, "JPEG", margin, margin, usableW, imgScaledH);
+  //     addWhiteMargins();
+  //     heightLeft -= usableH;
+
+  //     // 5. Loop for multi-page overflow
+  //     while (heightLeft > 0) {
+  //       shiftPosition += usableH; // Shift the viewing window down by one usable page height
+  //       pdf.addPage();
+
+  //       // Place the image shifted up by shiftPosition, but offset by the top margin
+  //       pdf.addImage(imgData, "JPEG", margin, margin - shiftPosition, usableW, imgScaledH);
+  //       addWhiteMargins();
+  //       heightLeft -= usableH;
+  //     }
+
+  //     pdf.save(`${header.invoiceNo}.pdf`);
+  //   } catch (error) {
+  //     console.error("Failed to generate PDF:", error);
+  //     alert("Something went wrong while generating the PDF. Please try again.");
+  //   } finally {
+  //     setGenerating(false);
+  //     setIsPreview(false);
+  //   }
+  // };
+
+  // Assuming pdfTemplateRef is already defined like this:
+  // const pdfTemplateRef = useRef<HTMLDivElement>(null);
+
+  const handlePrint = useReactToPrint({
+    contentRef: pdfTemplateRef,
+    documentTitle: `${header.invoiceNo || 'Tax-Invoice'}`,
+    onBeforePrint: () => {
+      setGenerating(true);
+      return Promise.resolve();
+    },
+    onAfterPrint: () => {
       setGenerating(false);
       setIsPreview(false);
+    },
+    onPrintError: (error) => {
+      console.error("Print failed:", error);
+      alert("Something went wrong while preparing the PDF.");
+      setGenerating(false);
     }
-  };
+  });
 
   const validateBill = () => {
     if (!header.customerName.trim()) {
@@ -294,7 +348,7 @@ function BillingPage() {
                 </button>
                 {savedInvoiceNo && (
                   <button
-                    onClick={generatePDF}
+                    onClick={handlePrint}
                     disabled={generating}
                     className="bg-white/50 border-2 border-[#c0421b]/40 text-[#c0421b] px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-[#c0421b]/5 disabled:opacity-50 transition-all"
                   >
@@ -750,7 +804,7 @@ function BillingPage() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={generatePDF}
+                  onClick={handlePrint}
                   disabled={generating}
                   className="bg-[#c0421b] text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 hover:bg-[#a03616] disabled:opacity-50"
                 >
