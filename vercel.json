@@ -1,1 +1,16 @@
-{}
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/_nitro/(.*)",
+      "dest": "/_nitro/$1"
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/"
+    }
+  ]
+}
