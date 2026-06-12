@@ -35,13 +35,29 @@
 }
 
 @keyframes sparkle {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.2) rotate(15deg); }
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2) rotate(15deg);
+  }
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 :root {
@@ -99,17 +115,23 @@
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
+
   *::-webkit-scrollbar {
     display: none;
   }
-  html, body {
+
+  html,
+  body {
     scrollbar-width: none;
     -ms-overflow-style: none;
     overflow-x: hidden;
   }
-  html::-webkit-scrollbar, body::-webkit-scrollbar {
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
     display: none;
   }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
@@ -121,31 +143,42 @@
   .bg-festive {
     background-image: var(--gradient-festive);
   }
+
   .shadow-festive {
     box-shadow: var(--shadow-festive);
   }
+
   .animate-sparkle {
     animation: var(--animate-sparkle);
   }
+
   .animate-float {
     animation: var(--animate-float);
   }
+
   .glass-card {
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
   }
+
   .perspective-1000 {
     perspective: 1000px;
   }
+
   .animate-shimmer {
     animation: shimmer 2s infinite;
   }
 }
 
 @keyframes shimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* PDF-safe color overrides: html2canvas does not support oklch */
@@ -173,15 +206,46 @@
   --ember: #c0421b;
   --spark: #e8a14a;
 }
+
 .pdf-mode .bg-festive {
   background-image: linear-gradient(135deg, #c0421b, #e8a14a) !important;
 }
+
 /* Hide number input spinners (needles) */
 .no-spinner::-webkit-inner-spin-button,
 .no-spinner::-webkit-outer-spin-button {
   -webkit-appearance: none !important;
   margin: 0 !important;
 }
+
 .no-spinner {
   -moz-appearance: textfield !important;
+}
+
+/* --- PRINT STYLES --- */
+@media print {
+
+  /* 1. Define the physical page size and global margins */
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  /* 2. Prevent the slicing bug! Never break inside a table row */
+  tr,
+  .avoid-break {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* 3. Force the browser to print your background colors and borders */
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 4. Hide UI elements (like your generate button) from the final PDF */
+  .no-print {
+    display: none !important;
+  }
 }
