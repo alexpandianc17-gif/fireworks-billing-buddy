@@ -1,10 +1,1 @@
-{
-  "version": 2,
-  "framework": "nitro",
-  "builds": [
-    {
-      "src": "nitro.config.ts",
-      "use": "@vercel/nft"
-    }
-  ]
-}
+{}
