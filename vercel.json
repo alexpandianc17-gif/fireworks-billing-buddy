@@ -1,8 +1,10 @@
 {
-  "rewrites": [
+  "version": 2,
+  "framework": "nitro",
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/"
+      "src": "nitro.config.ts",
+      "use": "@vercel/nft"
     }
   ]
 }
