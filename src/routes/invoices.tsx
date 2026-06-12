@@ -18,8 +18,7 @@ import { useBilling } from "@/store/billing";
 import { getInvoicesAction, recordPaymentAction } from "@/lib/billing-actions";
 import { TopNav } from "@/components/TopNav";
 import type { Invoice, Payment, PaymentStatus, TransportHeader } from "@/types/billing";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { useReactToPrint } from "react-to-print";
 import { JayakaviTemplate } from "@/components/JayakaviTemplate";
 import { ThangakaviyaTemplate } from "@/components/ThangakaviyaTemplate";
 
@@ -120,46 +119,21 @@ function InvoicesPage() {
     setPayNote("");
   };
 
+  const handlePrint = useReactToPrint({
+    content: () => pdfTemplateRef.current,
+    documentTitle: printingInv?.invoiceNo || "Invoice",
+    onAfterPrint: () => {
+      setGeneratingId(null);
+      setPrintingInv(null);
+    },
+  });
+
   const handleDownloadPDF = async (inv: Invoice) => {
     setPrintingInv(inv);
     setGeneratingId(inv.invoiceNo);
     
-    setTimeout(async () => {
-      const el = pdfTemplateRef.current;
-      if (!el) {
-        setGeneratingId(null);
-        setPrintingInv(null);
-        return;
-      }
-
-      try {
-        const canvas = await html2canvas(el, {
-          scale: 1.5, // Reduced scale for smaller size
-          useCORS: true,
-          logging: false,
-          backgroundColor: "#ffffff",
-        });
-        const imgData = canvas.toDataURL("image/jpeg", 0.8); // JPEG with 80% quality for much smaller size
-        const pdf = new jsPDF("p", "mm", "a4");
-        const pdfW = pdf.internal.pageSize.getWidth();
-        const pdfH = pdf.internal.pageSize.getHeight();
-        const imgProps = pdf.getImageProperties(imgData);
-        const imgH = (imgProps.height * pdfW) / imgProps.width;
-        
-        let y = 0;
-        while (y < imgH - 0.5) { // Added 0.5mm buffer to prevent empty second page
-          if (y > 0) pdf.addPage();
-          pdf.addImage(imgData, "JPEG", 0, -y, pdfW, imgH);
-          y += pdfH;
-        }
-        pdf.save(`${inv.invoiceNo}.pdf`);
-      } catch (error) {
-        console.error("PDF generation error:", error);
-        alert("Failed to generate PDF. Please try again.");
-      } finally {
-        setGeneratingId(null);
-        setPrintingInv(null);
-      }
+    setTimeout(() => {
+      if (handlePrint) handlePrint();
     }, 500);
   };
 
